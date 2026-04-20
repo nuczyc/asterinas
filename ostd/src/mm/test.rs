@@ -495,6 +495,8 @@ mod io {
 }
 
 mod vmspace {
+    use crate::mm::PAGE_SIZE;
+
     use super::*;
 
     /// Helper function to create a dummy `UFrame`.
@@ -881,5 +883,37 @@ mod vmspace {
             .cursor_mut(&preempt_guard, &range)
             .expect("Failed to create mutable cursor");
         cursor_mut.protect_next(0x2000, |_| {}); // Not page-aligned.
+    }
+
+    #[ktest]
+    fn cursor_mut_unmap_len_overflow_panic() {
+        let vmspace = VmSpace::default();
+        let range = 0x7ffffffad000usize..0x7ffffffae000usize;
+        let preempt_guard = disable_preempt();
+
+        let mut cursor_mut = vmspace
+            .cursor_mut(&preempt_guard, &range)
+            .expect("Failed to create mutable cursor");
+
+        /*
+         * cursor_mut.virt_addr() == 0x7ffffffad000.
+         *
+         * The following length is page-aligned and makes:
+         *
+         *     0x7ffffffad000 + 0xffff800000053000
+         *       = 0x1_0000000000000000
+         *
+         * On builds with overflow checks, `CursorMut::unmap` panics at:
+         *
+         *     let end_va = self.virt_addr() + len;
+         *
+         * On builds without overflow checks, it wraps to zero and demonstrates the
+         * silent no-op bug instead.
+         */
+        let len = usize::MAX - range.start + 1;
+        assert_eq!(len, 0xffff800000053000usize);
+        assert_eq!(len % PAGE_SIZE, 0);
+
+        cursor_mut.unmap(len);
     }
 }

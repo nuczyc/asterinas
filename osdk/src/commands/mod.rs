@@ -48,6 +48,7 @@ pub fn execute_forwarded_command(subcommand: &str, args: &Vec<String>, cfg_ktest
         let env_rustdocflags = std::env::var("RUSTDOCFLAGS").unwrap_or_default();
         let rustdocflags = env_rustdocflags + " --check-cfg cfg(ktest)";
         cargo.env("RUSTDOCFLAGS", rustdocflags);
+        cargo.arg("--json-output");
     }
 
     let status = cargo.status().expect("Failed to execute cargo");

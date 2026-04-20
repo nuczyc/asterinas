@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
 
-use align_ext::AlignExt;
-
 use super::SyscallReturn;
 use crate::prelude::*;
 
@@ -44,8 +42,8 @@ fn do_sys_mremap(
         );
     }
 
-    let old_size = old_size.align_up(PAGE_SIZE);
-    let new_size = new_size.align_up(PAGE_SIZE);
+    let old_size = page_align_up_size(old_size)?;
+    let new_size = page_align_up_size(new_size)?;
 
     let user_space = ctx.user_space();
     let root_vmar = user_space.root_vmar();
@@ -81,6 +79,12 @@ fn do_sys_mremap(
         root_vmar.resize_mapping(old_addr, old_size, new_size, true)?;
         Ok(old_addr)
     }
+}
+
+fn page_align_up_size(size: usize) -> Result<usize> {
+    size.checked_add(PAGE_SIZE - 1)
+        .map(|size| size & !(PAGE_SIZE - 1))
+        .ok_or_else(|| Error::with_message(Errno::EINVAL, "mremap: size align overflow"))
 }
 
 bitflags! {
