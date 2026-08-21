@@ -249,4 +249,3 @@ mod tests {
         assert!(matches!(err, Err(IoErr::NotFound)));
     }
 }
-// verus!

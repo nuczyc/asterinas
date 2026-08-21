@@ -1,10 +1,13 @@
-use crate::{phy::TisPhy, tis::TisErr};
+
+use crate::phy::TisPhy;
+use crate::tis::TisErr;
 
 pub trait TisMmioBackend {
     fn read8(&mut self, addr: u32) -> Result<u8, TisErr>;
     fn read32(&mut self, addr: u32) -> Result<u32, TisErr>;
     fn write8(&mut self, addr: u32, value: u8) -> Result<(), TisErr>;
     fn write32(&mut self, addr: u32, value: u32) -> Result<(), TisErr>;
+    fn delay(&mut self);
 }
 pub struct TisMmio<B: TisMmioBackend> {
     backend: B,
@@ -29,27 +32,55 @@ impl<B: TisMmioBackend> TisPhy for TisMmio<B> {
     fn write32(&mut self, addr: u32, value: u32) -> Result<(), TisErr> {
         self.backend.write32(addr, value.to_le())
     }
-    fn read_fifo(&mut self, addr: u32, out: &mut [u8], off: usize, n: usize) -> Result<(), TisErr> {
+    fn read_fifo(
+        &mut self,
+        addr: u32,
+        out: &mut [u8],
+        off: usize,
+        n: usize,
+    ) -> Result<(), TisErr> {
+        let out_len = out.len();
         let mut i = 0usize;
         while i < n {
+            let idx = off + i;
+            if idx >= out_len {
+                return Err(TisErr::Phy);
+            }
             match self.backend.read8(addr) {
-                Ok(b) => out[off + i] = b,
+                Ok(b) => out[idx] = b,
                 Err(e) => return Err(e),
             }
+            {}
             i += 1;
         }
         Ok(())
     }
-    fn write_fifo(&mut self, addr: u32, data: &[u8], off: usize, n: usize) -> Result<(), TisErr> {
+    fn write_fifo(
+        &mut self,
+        addr: u32,
+        data: &[u8],
+        off: usize,
+        n: usize,
+    ) -> Result<(), TisErr> {
+        let data_len = data.len();
         let mut i = 0usize;
         while i < n {
-            match self.backend.write8(addr, data[off + i]) {
+            let idx = off + i;
+            if idx >= data_len {
+                return Err(TisErr::Phy);
+            }
+            let byte = match data.get(idx) {
+                Some(v) => *v,
+                None => return Err(TisErr::Phy),
+            };
+            match self.backend.write8(addr, byte) {
                 Ok(()) => i += 1,
                 Err(e) => {
                     {}
                     return Err(e);
                 }
             }
+            {}
         }
         {}
         Ok(())
@@ -60,8 +91,6 @@ impl<B: TisMmioBackend> TisPhy for TisMmio<B> {
         {}
     }
     fn delay(&mut self) {
-        for _ in 0..self.spin {
-            core::hint::spin_loop();
-        }
+        self.backend.delay();
     }
 }

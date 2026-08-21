@@ -2,7 +2,6 @@
 use crate::crypto::*;
 use crate::cursor::Cursor;
 
-const _: () = ();
 /// 标签 2 字节 + 长度 4 字节 + 命令码或返回码 4 字节。
 pub const HEADER_LEN: usize = 10;
 /// 带授权区的报文标签。授权区只在这个标签下存在。

@@ -122,7 +122,7 @@ impl<const N: usize> TpmBuf<N> {
         let start: usize = self.length;
         let mut i: usize = 0;
         while i < src.len() {
-            let b: u8 = *&src[i];
+            let b: u8 = src[i];
             self.data[start + i] = b;
             i = i + 1;
         }
@@ -196,7 +196,7 @@ impl<const N: usize> TpmBuf<N> {
             self.boundary_error = true;
             return 0;
         }
-        let v = *&self.data[*offset];
+        let v = self.data[*offset];
         *offset = *offset + 1;
         v
     }
@@ -210,8 +210,8 @@ impl<const N: usize> TpmBuf<N> {
             return 0;
         }
         let o = *offset;
-        let b0 = *&self.data[o];
-        let b1 = *&self.data[o + 1];
+        let b0 = self.data[o];
+        let b1 = self.data[o + 1];
         *offset = o + 2;
         be16_of_exec(b0, b1)
     }
@@ -225,10 +225,10 @@ impl<const N: usize> TpmBuf<N> {
             return 0;
         }
         let o = *offset;
-        let b0 = *&self.data[o];
-        let b1 = *&self.data[o + 1];
-        let b2 = *&self.data[o + 2];
-        let b3 = *&self.data[o + 3];
+        let b0 = self.data[o];
+        let b1 = self.data[o + 1];
+        let b2 = self.data[o + 2];
+        let b3 = self.data[o + 3];
         *offset = o + 4;
         be32_of_exec(b0, b1, b2, b3)
     }

@@ -2,7 +2,6 @@
 use crate::auth::*;
 use crate::crypto::*;
 
-const _: () = ();
 /// 会话生命周期。
 ///
 /// `Pending` 用元组变体而非具名字段：带花括号的结构体字面量在 `ensures`
@@ -37,7 +36,7 @@ pub struct AuthSession {
     /// 由本端记住——这也正是响应无法被挪用到另一条命令上的原因。
     pub ordinal: u32,
     pub state: SessionState,
-        }
+}
 impl AuthSession {
     /// 把会话密钥与口令拼进一块定长缓冲区，返回有效长度。
     fn key_buf(&self) -> ([u8; KEY_MATERIAL_MAX], usize) {
@@ -63,7 +62,6 @@ impl AuthSession {
         salt: &[u8],
         our_nonce: [u8; NONCE_LEN],
         tpm_nonce: [u8; NONCE_LEN],
-        /* gen removed (ghost) */
     ) -> AuthSession {
         let key = kdfa32::<
             H,
@@ -83,7 +81,6 @@ impl AuthSession {
             attrs: 0,
             ordinal: 0,
             state: SessionState::Idle,
-            /* nonce_gen removed (ghost) */
         }
     }
     /// 设置本轮口令。尾部零字节按规范先行剥除。
@@ -113,7 +110,6 @@ impl AuthSession {
     /// 点会离真正的原因很远。
     pub fn begin<R: NonceSource>(&mut self, rng: &mut R, ordinal: u32, attrs: u8) {
         self.our_nonce = rng.nonce();
-        /* nonce_gen assignment removed (ghost) */
         self.ordinal = ordinal;
         self.attrs = attrs | SA_CONTINUE_SESSION;
     }
@@ -137,7 +133,7 @@ impl AuthSession {
         let parms = &buf[parm_off..parm_off + parm_len];
         let cph = cp_hash::<S>(self.ordinal, names, parms);
         let (kb, klen) = self.key_buf();
-        let key = &kb[..][0..klen];
+        let key = &kb[0..klen];
         let mac = auth_hmac::<
             H,
         >(key, &cph, &self.our_nonce, &self.tpm_nonce, self.attrs);
@@ -184,7 +180,7 @@ impl AuthSession {
         let parms = &raw[a.parm_off..parm_end];
         let rph = rp_hash::<S>(0, self.ordinal, parms);
         let (kb, klen) = self.key_buf();
-        let key = &kb[..][0..klen];
+        let key = &kb[0..klen];
         let expect = auth_hmac::<
             H,
         >(key, &rph, &a.tpm_nonce, &self.our_nonce, self.attrs);
@@ -220,7 +216,7 @@ pub fn cfb_material<H: HmacSha256Ctx>(
     older: &[u8; NONCE_LEN],
 ) -> [u8; CFB_MATERIAL_LEN] {
     let (kb, klen) = session.key_buf();
-    let key = &kb[..][0..klen];
+    let key = &kb[0..klen];
     kdfa32::<
         H,
     >(key, &LABEL_CFB[..], &newer[..], &older[..])

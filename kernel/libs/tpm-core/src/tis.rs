@@ -27,7 +27,7 @@ pub fn reg_did_vid(l: u8) -> u32 {
 pub const POLL_INTERVAL_MS: u32 = 1;
 /// 规范给出的四档超时（毫秒）。
 pub const TIMEOUT_A_MS: u32 = 750;
-pub const TIMEOUT_B_MS: u32 = 30000;
+pub const TIMEOUT_B_MS: u32 = 4000;
 pub const TIMEOUT_C_MS: u32 = 750;
 pub const TIMEOUT_D_MS: u32 = 750;
 /// 把毫秒超时折算成轮询次数。

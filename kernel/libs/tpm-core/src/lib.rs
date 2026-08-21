@@ -1,10 +1,6 @@
 #![no_std]
 #![allow(unused_imports)]
 
-extern crate alloc;
-
-
-pub mod compat;
 pub mod tpm1;
 pub mod probe;
 pub mod buf;
@@ -59,7 +55,7 @@ pub use session::{AuthSession, SessionState};
 pub use tis::{TisErr, MAX_LOCALITY};
 pub use tis_core::Tis;
 pub use phy::TisPhy;
-pub use mmio::TisMmio;
+pub use mmio::{TisMmio, TisMmioBackend};
 pub use xfer::{Xfer, XferErr};
 pub use link::{ChipLink, LiveSet};
 pub use secure::{Authenticated, CmdLayout, Guarded, SecErr};

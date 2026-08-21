@@ -57,7 +57,7 @@ pub fn parse_response1(raw: &[u8]) -> Result<Response1<'_>, Parse1Error> {
     if rc != RC_SUCCESS {
         return Err(Parse1Error::TpmError(rc));
     }
-    let body = &raw[HEADER_LEN..raw.len()];
+    let body = &raw[HEADER_LEN..];
     Ok(Response1 { rc, body })
 }
 /// 给定编号与总长度,生成 10 字节请求头。

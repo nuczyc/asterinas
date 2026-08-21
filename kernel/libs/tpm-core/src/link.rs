@@ -10,13 +10,40 @@ use crate::xfer::{Xfer, XferErr, peek_be32};
 ///
 /// 只有幽灵字段，运行时是零大小类型。所有修改它的方法都不含可执行代码——
 /// 它们不是在「记录」什么，而是在**声明本端对芯片行为的假设**。
-pub struct LiveSet;
+pub struct LiveSet {}
 impl LiveSet {
     pub fn new() -> Self {
-        Self
+        unimplemented!()
     }
+    /// 记下芯片新装载的句柄。
+    ///
+    /// **信任条款（一）**：`valid_phandle(h)`。
+    /// 依据：规范规定装载类命令成功时返回的句柄落在瞬态对象区间内，零与
+    /// 保留值都不是合法返回。
+    ///
+    /// **信任条款（二）**：`!old(self).view().contains(h)`。
+    /// 依据：一个句柄在被显式释放或换出之前唯一标识一个已装载对象，芯片不会
+    /// 把仍然有效的句柄再次分配出去。
+    ///
+    /// 第二条是**整条证明链里最实质的一条假设**：上层句柄表的单射性、两个
+    /// 句柄空间之间的隔离性，最终都归结到它。它也是唯一一条无法靠本端的任何
+    /// 检查加固的假设——本端若能自行验证句柄是新的，就不需要假设了。
+    ///
+    /// 调用纪律：只能用刚刚从装载类命令的成功响应里读出的句柄调用，且该响应
+    /// 必须已经通过长度校验。任何其他调用方式都会让上述两条从假设变成谎言。
     pub fn observe_load(&mut self, _h: u32) {}
-    pub fn observe_flush(&mut self) {}
+    /// 记下句柄已不再由本端追踪。
+    ///
+    /// **信任条款（三）**：集合按 `h` 收缩。
+    ///
+    /// 句柄取幽灵值而非运行时值：这一步在运行时什么都不做，取值只用于证明。
+    /// 这样即使命令缓冲区短到读不出句柄字段，账仍然记得下——而不必为了记账
+    /// 去给命令缓冲区补一条本不需要的长度前提。
+    ///
+    /// 注意这里**不假设芯片真的释放了**。释放命令若因总线故障没能送达，那份
+    /// 资源会一直占着芯片直到复位。这是已知且无从补救的泄漏，写在账上只会
+    /// 让本端永远背着一个再也用不上的句柄。
+    pub fn observe_flush(&mut self, _h: u32) {}
 }
 pub struct ChipLink<P: TisPhy> {
     pub x: Xfer<P>,
@@ -34,7 +61,7 @@ impl<P: TisPhy> ChipTransport for ChipLink<P> {
     fn exec(&mut self, cmd: &[u8], rsp: &mut [u8]) -> Result<usize, IoErr> {
         let cc = peek_be32(cmd, 6);
         if cc == CC_FLUSH_CONTEXT {
-            self.ledger.observe_flush();
+            self.ledger.observe_flush(peek_be32(cmd, HEADER_SIZE));
         }
         if !self.x.ready() {
             return Err(IoErr::NotReady);

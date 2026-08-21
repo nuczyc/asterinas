@@ -1,4 +1,3 @@
-use alloc::vec::Vec;
 
 use crate::auth::{
     AuthErr, CMD_SESSION_LEN, MAX_SESSIONS, RspAuth, write_cmd_session,
@@ -45,11 +44,6 @@ impl CmdLayout {}
 /// 等式完整地写出来——凭证若说不清自己证的是什么，就退化成了一个标记。
 pub struct Authenticated {
     pub a: RspAuth,
-    pub raw: Vec<u8>,
-    pub key: Vec<u8>,
-    pub ordinal: u32,
-    pub our_nonce: Vec<u8>,
-    pub attrs: u8,
     /// 封印。本模块之外无法赋值，因而无法构造本类型。
     #[allow(dead_code)]
     seal: (),
@@ -128,15 +122,7 @@ impl<P: TisPhy> Guarded<P> {
             Ok(a) => a,
             Err(e) => return Err(SecErr::Auth(e)),
         };
-        Ok(Authenticated {
-            a,
-            raw: Vec::new(),
-            key: Vec::new(),
-            ordinal: 0,
-            our_nonce: Vec::new(),
-            attrs: 0,
-            seal: (),
-        })
+        Ok(Authenticated { a, seal: () })
     }
     /// 取出响应的参数区。
     ///

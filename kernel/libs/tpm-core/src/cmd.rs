@@ -133,7 +133,7 @@ pub fn pcr_extend_payload(
     out[5] = alg[1];
     let mut i: usize = 0;
     while i < SHA256_LEN {
-        out[6 + i] = *&digest[i];
+        out[6 + i] = digest[i];
         i = i + 1;
     }
     out
