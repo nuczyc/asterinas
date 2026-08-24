@@ -1,8 +1,4 @@
-
-use crate::cursor::Cursor;
-use crate::msg::TPM_HEADER_LEN;
-use crate::phy::TisPhy;
-use crate::tis::*;
+use crate::{cursor::Cursor, msg::TPM_HEADER_LEN, phy::TisPhy, tis::*};
 
 pub struct Tis<P: TisPhy> {
     pub phy: P,
@@ -26,10 +22,7 @@ impl<P: TisPhy> Tis<P> {
     fn wait_status(&mut self, mask: u8, budget: u32) -> Result<u8, TisErr> {
         let mut left = budget;
         while left > 0 {
-            let s = match self.status() {
-                Ok(v) => v,
-                Err(e) => return Err(e),
-            };
+            let s = self.status()?;
             if (s & mask) == mask {
                 return Ok(s);
             }
@@ -47,10 +40,7 @@ impl<P: TisPhy> Tis<P> {
         let mut left = budget;
         while left > 0 {
             let addr = reg_sts(self.locality);
-            let v = match self.phy.read32(addr) {
-                Ok(v) => v,
-                Err(e) => return Err(e),
-            };
+            let v = self.phy.read32(addr)?;
             {};
             let b = ((v >> 8u32) & 0xFFFFu32) as u16;
             if b >= 1 {
@@ -68,10 +58,7 @@ impl<P: TisPhy> Tis<P> {
     /// 场景下把「申请正在处理中」误判成「已经拿到」。
     fn check_locality(&mut self) -> Result<bool, TisErr> {
         let addr = reg_access(self.locality);
-        let a = match self.phy.read8(addr) {
-            Ok(v) => v,
-            Err(e) => return Err(e),
-        };
+        let a = self.phy.read8(addr)?;
         let want = ACCESS_ACTIVE_LOCALITY | ACCESS_VALID;
         let mask = want | ACCESS_REQUEST_USE;
         Ok((a & mask) == want)
@@ -138,10 +125,7 @@ impl<P: TisPhy> Tis<P> {
     fn send_data_inner(&mut self, cmd: &[u8], len: usize) -> Result<(), TisErr> {
         let sts_addr = reg_sts(self.locality);
         let fifo_addr = reg_data_fifo(self.locality);
-        let s0 = match self.status() {
-            Ok(v) => v,
-            Err(e) => return Err(e),
-        };
+        let s0 = self.status()?;
         if (s0 & STS_COMMAND_READY) == 0 {
             self.phy.reset_fifo(sts_addr);
             match self.wait_status(STS_COMMAND_READY, budget_of(TIMEOUT_B_MS)) {
@@ -163,6 +147,7 @@ impl<P: TisPhy> Tis<P> {
                 Ok(()) => {}
                 Err(e) => return Err(e),
             }
+            {}
             let next = match count.checked_add(n) {
                 Some(v) => v,
                 None => return Err(TisErr::Protocol),
@@ -172,10 +157,7 @@ impl<P: TisPhy> Tis<P> {
                 Ok(_) => {}
                 Err(e) => return Err(e),
             }
-            let s1 = match self.status() {
-                Ok(v) => v,
-                Err(e) => return Err(e),
-            };
+            let s1 = self.status()?;
             if (s1 & STS_DATA_EXPECT) == 0 {
                 return Err(TisErr::Protocol);
             }
@@ -184,26 +166,19 @@ impl<P: TisPhy> Tis<P> {
             Ok(()) => {}
             Err(e) => return Err(e),
         }
+        {}
         match self.wait_status(STS_VALID, budget_of(TIMEOUT_C_MS)) {
             Ok(_) => {}
             Err(e) => return Err(e),
         }
-        let s2 = match self.status() {
-            Ok(v) => v,
-            Err(e) => return Err(e),
-        };
+        let s2 = self.status()?;
         if (s2 & STS_DATA_EXPECT) != 0 {
             return Err(TisErr::Protocol);
         }
         Ok(())
     }
     /// 从数据口取 `count` 字节到 `out[off..]`。
-    fn recv_data(
-        &mut self,
-        out: &mut [u8],
-        off: usize,
-        count: usize,
-    ) -> Result<(), TisErr> {
+    fn recv_data(&mut self, out: &mut [u8], off: usize, count: usize) -> Result<(), TisErr> {
         let fifo_addr = reg_data_fifo(self.locality);
         let mut got: usize = 0;
         while got < count {
@@ -222,6 +197,7 @@ impl<P: TisPhy> Tis<P> {
                 Ok(()) => {}
                 Err(e) => return Err(e),
             }
+            {}
             let next = match got.checked_add(n) {
                 Some(v) => v,
                 None => return Err(TisErr::Protocol),
@@ -258,14 +234,12 @@ impl<P: TisPhy> Tis<P> {
             Ok(()) => {}
             Err(e) => return Err(e),
         }
+        {}
         match self.wait_status(STS_VALID, budget_of(TIMEOUT_C_MS)) {
             Ok(_) => {}
             Err(e) => return Err(e),
         }
-        let s = match self.status() {
-            Ok(v) => v,
-            Err(e) => return Err(e),
-        };
+        let s = self.status()?;
         if (s & STS_DATA_AVAIL) != 0 {
             return Err(TisErr::Protocol);
         }
@@ -277,12 +251,7 @@ impl<P: TisPhy> Tis<P> {
     /// 部可能失败的动作收进一个内部函数，让归还成为无条件的收尾语句——于是
     /// 「任何路径退出时 locality 均被释放」不需要逐条路径去查，它是控制流的形
     /// 状直接给出的。这也是本层唯一一处刻意为了可证性而调整的结构。
-    pub fn transmit(
-        &mut self,
-        cmd: &[u8],
-        len: usize,
-        out: &mut [u8],
-    ) -> Result<usize, TisErr> {
+    pub fn transmit(&mut self, cmd: &[u8], len: usize, out: &mut [u8]) -> Result<usize, TisErr> {
         match self.request_locality(budget_of(TIMEOUT_A_MS)) {
             Ok(()) => {}
             Err(e) => return Err(e),
@@ -291,12 +260,7 @@ impl<P: TisPhy> Tis<P> {
         self.relinquish_locality();
         res
     }
-    fn exchange(
-        &mut self,
-        cmd: &[u8],
-        len: usize,
-        out: &mut [u8],
-    ) -> Result<usize, TisErr> {
+    fn exchange(&mut self, cmd: &[u8], len: usize, out: &mut [u8]) -> Result<usize, TisErr> {
         let sts_addr = reg_sts(self.locality);
         self.phy.reset_fifo(sts_addr);
         match self.send_data(cmd, len) {

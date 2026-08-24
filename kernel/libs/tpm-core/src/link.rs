@@ -1,10 +1,11 @@
-
-use crate::chip::{ChipTransport, RC_SUCCESS};
-use crate::cmd::{CC_CONTEXT_LOAD, CC_FLUSH_CONTEXT};
-use crate::module::IoErr;
-use crate::phy::TisPhy;
-use crate::rewrite::HEADER_SIZE;
-use crate::xfer::{Xfer, XferErr, peek_be32};
+use crate::{
+    chip::{ChipTransport, RC_SUCCESS},
+    cmd::{CC_CONTEXT_LOAD, CC_FLUSH_CONTEXT},
+    module::IoErr,
+    phy::TisPhy,
+    rewrite::HEADER_SIZE,
+    xfer::{Xfer, XferErr, peek_be32},
+};
 
 /// 芯片当前持有的句柄集合。
 ///
@@ -13,8 +14,17 @@ use crate::xfer::{Xfer, XferErr, peek_be32};
 pub struct LiveSet {}
 impl LiveSet {
     pub fn new() -> Self {
-        unimplemented!()
+        LiveSet {}
     }
+}
+
+impl Default for LiveSet {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl LiveSet {
     /// 记下芯片新装载的句柄。
     ///
     /// **信任条款（一）**：`valid_phandle(h)`。
@@ -105,3 +115,4 @@ pub fn map_err(e: XferErr) -> IoErr {
         XferErr::BadCommand => IoErr::BadCommand,
     }
 }
+// verus!

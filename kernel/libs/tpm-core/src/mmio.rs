@@ -1,6 +1,4 @@
-
-use crate::phy::TisPhy;
-use crate::tis::TisErr;
+use crate::{phy::TisPhy, tis::TisErr};
 
 pub trait TisMmioBackend {
     fn read8(&mut self, addr: u32) -> Result<u8, TisErr>;
@@ -12,11 +10,14 @@ pub trait TisMmioBackend {
 pub struct TisMmio<B: TisMmioBackend> {
     backend: B,
     /// 每次 [`TisPhy::delay`] 空转的圈数。不是时长，真实间隔取决于目标 CPU 主频。
-    spin: u32,
+    _spin: u32,
 }
 impl<B: TisMmioBackend> TisMmio<B> {
     pub fn new(backend: B, spin: u32) -> Self {
-        TisMmio { backend, spin }
+        TisMmio {
+            backend,
+            _spin: spin,
+        }
     }
 }
 impl<B: TisMmioBackend> TisPhy for TisMmio<B> {
@@ -24,7 +25,7 @@ impl<B: TisMmioBackend> TisPhy for TisMmio<B> {
         self.backend.read8(addr)
     }
     fn read32(&mut self, addr: u32) -> Result<u32, TisErr> {
-        self.backend.read32(addr).map(|v| u32::from_le(v))
+        self.backend.read32(addr).map(u32::from_le)
     }
     fn write8(&mut self, addr: u32, value: u8) -> Result<(), TisErr> {
         self.backend.write8(addr, value)
@@ -32,13 +33,7 @@ impl<B: TisMmioBackend> TisPhy for TisMmio<B> {
     fn write32(&mut self, addr: u32, value: u32) -> Result<(), TisErr> {
         self.backend.write32(addr, value.to_le())
     }
-    fn read_fifo(
-        &mut self,
-        addr: u32,
-        out: &mut [u8],
-        off: usize,
-        n: usize,
-    ) -> Result<(), TisErr> {
+    fn read_fifo(&mut self, addr: u32, out: &mut [u8], off: usize, n: usize) -> Result<(), TisErr> {
         let out_len = out.len();
         let mut i = 0usize;
         while i < n {
@@ -50,18 +45,11 @@ impl<B: TisMmioBackend> TisPhy for TisMmio<B> {
                 Ok(b) => out[idx] = b,
                 Err(e) => return Err(e),
             }
-            {}
             i += 1;
         }
         Ok(())
     }
-    fn write_fifo(
-        &mut self,
-        addr: u32,
-        data: &[u8],
-        off: usize,
-        n: usize,
-    ) -> Result<(), TisErr> {
+    fn write_fifo(&mut self, addr: u32, data: &[u8], off: usize, n: usize) -> Result<(), TisErr> {
         let data_len = data.len();
         let mut i = 0usize;
         while i < n {

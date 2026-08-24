@@ -1,4 +1,3 @@
-
 use crate::crb::{CMD_BUF_CAP, CrbErr, RSP_BUF_CAP};
 
 pub trait CrbPhy {

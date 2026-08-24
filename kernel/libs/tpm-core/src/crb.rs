@@ -1,4 +1,3 @@
-
 pub const REG_LOC_STATE: u32 = 0x0000;
 pub const REG_LOC_CTRL: u32 = 0x0008;
 pub const REG_CTRL_REQ: u32 = 0x0040;

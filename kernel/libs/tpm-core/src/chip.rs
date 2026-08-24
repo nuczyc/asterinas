@@ -1,8 +1,9 @@
-
-use crate::cmd::{CC_CONTEXT_LOAD, CC_CONTEXT_SAVE, CC_FLUSH_CONTEXT};
-use crate::module::{ContextIo, IoErr};
-use crate::msg::{ST_NO_SESSIONS, build_header};
-use crate::rewrite::{HEADER_SIZE, read_be32, write_be32};
+use crate::{
+    cmd::{CC_CONTEXT_LOAD, CC_CONTEXT_SAVE, CC_FLUSH_CONTEXT},
+    module::{ContextIo, IoErr},
+    msg::{ST_NO_SESSIONS, build_header},
+    rewrite::{HEADER_SIZE, read_be32, write_be32},
+};
 
 pub const RC_SUCCESS: u32 = 0x0000_0000;
 /// 位 7 置位表示「格式一」返回码：低 6 位是错误号，位 8..11 是出错的
@@ -19,7 +20,11 @@ pub const RC_YIELDED: u32 = 0x0000_0908;
 pub const RC_TESTING: u32 = 0x0000_090A;
 pub const RC_RETRY: u32 = 0x0000_0922;
 pub fn rc_value(rc: u32) -> u32 {
-    if rc & RC_FMT1_BIT == RC_FMT1_BIT { rc & 0xBFu32 } else { rc }
+    if rc & RC_FMT1_BIT == RC_FMT1_BIT {
+        rc & 0xBFu32
+    } else {
+        rc
+    }
 }
 /// 返回码 → 编排层错误。
 ///
@@ -33,7 +38,9 @@ pub fn classify_rc(rc: u32) -> IoErr {
         IoErr::NotFound
     } else if v == RC_INTEGRITY {
         IoErr::Integrity
-    } else if v == RC_CONTEXT_GAP || v == RC_OBJECT_MEMORY || v == RC_SESSION_MEMORY
+    } else if v == RC_CONTEXT_GAP
+        || v == RC_OBJECT_MEMORY
+        || v == RC_SESSION_MEMORY
         || v == RC_MEMORY
     {
         IoErr::NoSpace
@@ -133,8 +140,8 @@ impl<T: ChipTransport> ContextIo for CtxIo<T> {
         if off > blob.len() || blob.len() - off < CTX_FIXED {
             return Err(IoErr::Integrity);
         }
-        let size = (blob[off + CTX_SIZE_OFF] as usize) * 256
-            + (blob[off + CTX_SIZE_OFF + 1] as usize);
+        let size =
+            (blob[off + CTX_SIZE_OFF] as usize) * 256 + (blob[off + CTX_SIZE_OFF + 1] as usize);
         let used = CTX_FIXED + size;
         if blob.len() - off < used {
             return Err(IoErr::Integrity);
@@ -169,7 +176,6 @@ impl<T: ChipTransport> ContextIo for CtxIo<T> {
         Ok((h, used))
     }
     fn save(&mut self, h: u32, out: &mut [u8], off: usize) -> Result<usize, IoErr> {
-        let out_len = out.len();
         self.put_header(CC_CONTEXT_SAVE, HEADER_SIZE + 4);
         write_be32_arr(&mut self.cbuf, HEADER_SIZE, h);
         {}
@@ -220,7 +226,7 @@ fn write_be32_arr(b: &mut [u8; MSG_MAX], off: usize, v: u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
-        struct FakeChip {
+    struct FakeChip {
         rsp: [u8; HEADER_SIZE],
     }
     impl ChipTransport for FakeChip {
@@ -249,3 +255,4 @@ mod tests {
         assert!(matches!(err, Err(IoErr::NotFound)));
     }
 }
+// verus!

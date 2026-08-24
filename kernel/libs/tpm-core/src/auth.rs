@@ -1,6 +1,4 @@
-
-use crate::crypto::*;
-use crate::cursor::Cursor;
+use crate::{crypto::*, cursor::Cursor};
 
 /// 标签 2 字节 + 长度 4 字节 + 命令码或返回码 4 字节。
 pub const HEADER_LEN: usize = 10;
@@ -49,28 +47,27 @@ pub fn auth_hmac<H: HmacSha256Ctx>(
     h.update(&newer[..]);
     h.update(&older[..]);
     h.update(&tail[..]);
+    {}
     h.finish()
 }
-pub fn rp_hash<S: Sha256Ctx>(rc: u32, ordinal: u32, parms: &[u8]) -> [u8; SHA256_LEN] {
+pub fn rp_hash<S: Sha256Ctx>(rc: u32, ordinal: u32, params: &[u8]) -> [u8; SHA256_LEN] {
     let mut s = S::new();
     let rc_b = be32_arr(rc);
     let ord_b = be32_arr(ordinal);
     s.update(&rc_b[..]);
     s.update(&ord_b[..]);
-    s.update(parms);
+    s.update(params);
+    {}
     s.finish()
 }
 /// `names` 是各授权句柄名字的顺序拼接，由会话层准备。
-pub fn cp_hash<S: Sha256Ctx>(
-    ordinal: u32,
-    names: &[u8],
-    parms: &[u8],
-) -> [u8; SHA256_LEN] {
+pub fn cp_hash<S: Sha256Ctx>(ordinal: u32, names: &[u8], params: &[u8]) -> [u8; SHA256_LEN] {
     let mut s = S::new();
     let ord_b = be32_arr(ordinal);
     s.update(&ord_b[..]);
     s.update(names);
-    s.update(parms);
+    s.update(params);
+    {}
     s.finish()
 }
 /// 在 `out[off..]` 处铺开一个会话，HMAC 字段先留空。
@@ -96,7 +93,7 @@ pub fn write_cmd_session(
     let mut i: usize = 0;
     while i < NONCE_LEN {
         out[off + SESS_NONCE_OFF + i] = nonce[i];
-        i = i + 1;
+        i += 1;
     }
     out[off + SESS_ATTRS_OFF] = attrs;
     out[off + SESS_HMAC_SIZE_OFF] = n[0];
@@ -104,7 +101,7 @@ pub fn write_cmd_session(
     let mut j: usize = 0;
     while j < NONCE_LEN {
         out[off + SESS_HMAC_OFF + j] = 0;
-        j = j + 1;
+        j += 1;
     }
 }
 /// 把算好的 MAC 填进占位处。
@@ -112,7 +109,7 @@ pub fn patch_hmac(out: &mut [u8], off: usize, mac: &[u8; SHA256_LEN]) {
     let mut i: usize = 0;
     while i < SHA256_LEN {
         out[off + SESS_HMAC_OFF + i] = mac[i];
-        i = i + 1;
+        i += 1;
     }
 }
 /// 一条响应里与本会话有关的位置信息。
@@ -122,15 +119,17 @@ pub fn patch_hmac(out: &mut [u8], off: usize, mac: &[u8; SHA256_LEN]) {
 #[derive(Clone, Copy)]
 pub struct RspAuth {
     /// 参数区起点。
-    pub parm_off: usize,
+    pub param_off: usize,
     /// 参数区长度。
-    pub parm_len: usize,
+    pub param_len: usize,
     /// 本会话 nonce 字段起点。
     pub nonce_off: usize,
     /// 本会话 HMAC 字段起点。
     pub hmac_off: usize,
     /// 对端回报的会话属性。
     pub attrs: u8,
+    /// 实际响应码。
+    pub rc: u32,
     /// 对端本轮的 nonce。
     pub tpm_nonce: [u8; NONCE_LEN],
 }
@@ -159,11 +158,7 @@ fn read_nonce(raw: &[u8], off: usize) -> [u8; NONCE_LEN] {
 ///   放行任意值，后面所有偏移就都由对端说了算。
 /// - **长度字段必须与实到字节数相等。** 少一字节意味着解析会读到不属于本
 ///   条响应的数据，多一字节意味着上层截断有误。
-pub fn parse_rsp_auth(
-    raw: &[u8],
-    rhandles: usize,
-    index: usize,
-) -> Result<RspAuth, AuthErr> {
+pub fn parse_rsp_auth(raw: &[u8], rhandles: usize, index: usize) -> Result<RspAuth, AuthErr> {
     if raw.len() < HEADER_LEN {
         return Err(AuthErr::Malformed);
     }
@@ -176,9 +171,10 @@ pub fn parse_rsp_auth(
         Some(v) => v,
         None => return Err(AuthErr::Malformed),
     };
-    if !c.skip(raw, 4) {
-        return Err(AuthErr::Malformed);
-    }
+    let rc = match c.read_be32(raw) {
+        Some(v) => v,
+        None => return Err(AuthErr::Malformed),
+    };
     if tag != ST_SESSIONS {
         return Err(AuthErr::Malformed);
     }
@@ -188,16 +184,16 @@ pub fn parse_rsp_auth(
     if !c.skip(raw, rhandles * 4) {
         return Err(AuthErr::Malformed);
     }
-    let parm_len_u32 = match c.read_be32(raw) {
+    let param_len_u32 = match c.read_be32(raw) {
         Some(v) => v,
         None => return Err(AuthErr::Malformed),
     };
-    if parm_len_u32 as usize > raw.len() {
+    if param_len_u32 as usize > raw.len() {
         return Err(AuthErr::Malformed);
     }
-    let parm_len = parm_len_u32 as usize;
-    let parm_off = c.pos;
-    if !c.skip(raw, parm_len) {
+    let param_len = param_len_u32 as usize;
+    let param_off = c.pos;
+    if !c.skip(raw, param_len) {
         return Err(AuthErr::Malformed);
     }
     let mut i: usize = 0;
@@ -252,19 +248,20 @@ pub fn parse_rsp_auth(
     if hmac_end != raw.len() {
         return Err(AuthErr::Malformed);
     }
-    let parm_end = match parm_off.checked_add(parm_len) {
+    let param_end = match param_off.checked_add(param_len) {
         Some(v) => v,
         None => return Err(AuthErr::Malformed),
     };
-    if parm_end > nonce_off {
+    if param_end > nonce_off {
         return Err(AuthErr::Malformed);
     }
     Ok(RspAuth {
-        parm_off,
-        parm_len,
+        param_off,
+        param_len,
         nonce_off,
         hmac_off,
         attrs,
+        rc,
         tpm_nonce,
     })
 }
@@ -276,8 +273,38 @@ pub fn ct_eq32(a: &[u8; SHA256_LEN], b: &[u8]) -> bool {
     let mut acc: u8 = 0;
     let mut i: usize = 0;
     while i < SHA256_LEN {
-        acc = acc | (a[i] ^ b[i]);
-        i = i + 1;
+        {}
+        acc |= a[i] ^ b[i];
+        i += 1;
     }
     acc == 0
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_rsp_auth_preserves_response_code() {
+        let rc: u32 = 0x12345678;
+        let mut raw = vec![0u8; 83];
+        raw[0..2].copy_from_slice(&ST_SESSIONS.to_be_bytes());
+        let size = (raw.len() as u32).to_be_bytes();
+        raw[2..6].copy_from_slice(&size);
+        raw[6..10].copy_from_slice(&rc.to_be_bytes());
+        raw[10..14].copy_from_slice(&0u32.to_be_bytes());
+
+        let nonce = [0xAB; NONCE_LEN];
+        let mac = [0xCD; SHA256_LEN];
+        raw[14..16].copy_from_slice(&(NONCE_LEN as u16).to_be_bytes());
+        raw[16..16 + NONCE_LEN].copy_from_slice(&nonce);
+        raw[16 + NONCE_LEN] = 0;
+        raw[17 + NONCE_LEN..19 + NONCE_LEN].copy_from_slice(&(SHA256_LEN as u16).to_be_bytes());
+        raw[19 + NONCE_LEN..19 + NONCE_LEN + SHA256_LEN].copy_from_slice(&mac);
+
+        let a = parse_rsp_auth(&raw, 0, 0).unwrap();
+        assert_eq!(a.rc, rc);
+        assert_eq!(a.tpm_nonce, nonce);
+    }
+}
+// verus!

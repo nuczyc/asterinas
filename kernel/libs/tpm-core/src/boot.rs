@@ -1,13 +1,15 @@
-
-use crate::chip::MSG_MAX;
-use crate::cmd::{CAP_TPM_PROPERTIES, CC_GET_CAPABILITY, CC_SELF_TEST, CC_SHUTDOWN, CC_STARTUP,
-    SU_CLEAR, SU_STATE};
-use crate::cursor::{be16_bytes, be32_bytes};
-use crate::msg::{ParseError, RC_SUCCESS, ST_NO_SESSIONS, TPM_HEADER_LEN, build_header,
-    parse_response};
-use crate::phy::TisPhy;
-use crate::rsp::parse_tpm_property;
-use crate::xfer::{Xfer, XferErr};
+use crate::{
+    chip::MSG_MAX,
+    cmd::{
+        CAP_TPM_PROPERTIES, CC_GET_CAPABILITY, CC_SELF_TEST, CC_SHUTDOWN, CC_STARTUP, SU_CLEAR,
+        SU_STATE,
+    },
+    cursor::{be16_bytes, be32_bytes},
+    msg::{ParseError, RC_SUCCESS, ST_NO_SESSIONS, TPM_HEADER_LEN, build_header, parse_response},
+    phy::TisPhy,
+    rsp::parse_tpm_property,
+    xfer::{Xfer, XferErr},
+};
 
 /// 器件尚未初始化，或者反过来——已经初始化过了。
 ///
@@ -89,6 +91,7 @@ impl<P: TisPhy> Boot<P> {
             self.cbuf[k] = hdr[k];
             k += 1;
         }
+        {}
     }
     /// 写一个字节的载荷。
     fn put_u8(&mut self, off: usize, v: u8) {
@@ -155,7 +158,13 @@ impl<P: TisPhy> Boot<P> {
         self.put_header(CC_SHUTDOWN, total);
         self.put_be16(TPM_HEADER_LEN, su);
         match self.exec(total) {
-            Ok((_n, rc)) => if rc == RC_SUCCESS { Ok(()) } else { Err(BootErr::Rc(rc)) }
+            Ok((_n, rc)) => {
+                if rc == RC_SUCCESS {
+                    Ok(())
+                } else {
+                    Err(BootErr::Rc(rc))
+                }
+            }
             Err(e) => Err(e),
         }
     }
@@ -168,7 +177,11 @@ impl<P: TisPhy> Boot<P> {
     pub fn self_test(&mut self, full: bool) -> Result<(), BootErr> {
         let total = TPM_HEADER_LEN + 1;
         self.put_header(CC_SELF_TEST, total);
-        let arg = if full { SELF_TEST_FULL } else { SELF_TEST_INCREMENTAL };
+        let arg = if full {
+            SELF_TEST_FULL
+        } else {
+            SELF_TEST_INCREMENTAL
+        };
         self.put_u8(TPM_HEADER_LEN, arg);
         match self.exec(total) {
             Ok((_n, rc)) => {
@@ -217,22 +230,10 @@ impl<P: TisPhy> Boot<P> {
     /// 于是分片 / 截断 / 跳过」的路径，而那条路径在容量充足的机器上永远不会
     /// 被执行到，也就永远不会被测到。宁可在这里拒绝加载。
     pub fn probe_limits(&mut self) -> Result<Limits, BootErr> {
-        let max_command = match self.property(PT_MAX_COMMAND_SIZE) {
-            Ok(v) => v,
-            Err(e) => return Err(e),
-        };
-        let max_response = match self.property(PT_MAX_RESPONSE_SIZE) {
-            Ok(v) => v,
-            Err(e) => return Err(e),
-        };
-        let max_object_context = match self.property(PT_MAX_OBJECT_CONTEXT) {
-            Ok(v) => v,
-            Err(e) => return Err(e),
-        };
-        let max_session_context = match self.property(PT_MAX_SESSION_CONTEXT) {
-            Ok(v) => v,
-            Err(e) => return Err(e),
-        };
+        let max_command = self.property(PT_MAX_COMMAND_SIZE)?;
+        let max_response = self.property(PT_MAX_RESPONSE_SIZE)?;
+        let max_object_context = self.property(PT_MAX_OBJECT_CONTEXT)?;
+        let max_session_context = self.property(PT_MAX_SESSION_CONTEXT)?;
         if max_response as usize > MSG_MAX {
             return Err(BootErr::Capacity);
         }
@@ -283,9 +284,7 @@ pub fn bring_up<P: TisPhy>(
         Ok(()) => {}
         Err(e) => return Err(e),
     }
-    let lim = match b.probe_limits() {
-        Ok(v) => v,
-        Err(e) => return Err(e),
-    };
+    let lim = b.probe_limits()?;
     Ok((b.finish(), lim))
 }
+// verus!

@@ -1,15 +1,19 @@
-
-use crate::phy::TisPhy;
-use crate::tpm1::cmd::{
-    build_continue_selftest, build_get_random, build_getcap, build_pcr_extend, build_pcr_read,
-    build_save_state, build_startup, CMD_MAX, SHA1_DIGEST_LEN,
+use crate::{
+    phy::TisPhy,
+    tpm1::{
+        cmd::{
+            CMD_MAX, SHA1_DIGEST_LEN, build_continue_selftest, build_get_random, build_getcap,
+            build_pcr_extend, build_pcr_read, build_save_state, build_startup,
+        },
+        msg::{HEADER_LEN, Parse1Error, RC_SUCCESS, parse_response1},
+        rsp::{
+            parse_cap_u32, parse_cap_u32_quad, parse_cap_u32_triple, parse_get_random,
+            parse_pcr_read,
+        },
+        timeout::{Durations, Timeouts, scale_durations, scale_timeouts},
+    },
+    xfer::{Xfer, XferErr},
 };
-use crate::tpm1::msg::{parse_response1, Parse1Error, HEADER_LEN, RC_SUCCESS};
-use crate::tpm1::rsp::{
-    parse_cap_u32, parse_cap_u32_quad, parse_cap_u32_triple, parse_get_random, parse_pcr_read,
-};
-use crate::tpm1::timeout::{scale_durations, scale_timeouts, Durations, Timeouts};
-use crate::xfer::{Xfer, XferErr};
 
 /// 自检仍在后台进行。轮询遇到它就继续等,不当错误。
 pub const WARN_DOING_SELFTEST: u32 = 0x0000_0802;
@@ -142,10 +146,7 @@ impl<P: TisPhy> Boot1<P> {
     /// 证明的性质,也是它相对「照抄一个 `while(1)`」的全部价值:器件卡在自检里
     /// 不退场时,本层等到轮数用尽就报超时,不会把调用方拖进无限等待。
     pub fn do_selftest(&mut self) -> Result<(), Boot1Err> {
-        let trc = match self.continue_selftest() {
-            Ok(v) => v,
-            Err(e) => return Err(e),
-        };
+        let trc = self.continue_selftest()?;
         if trc != RC_SUCCESS && trc != ERR_INVALID_POSTINIT {
             return Err(Boot1Err::Rc(trc));
         }
@@ -166,7 +167,7 @@ impl<P: TisPhy> Boot1<P> {
                 return Err(Boot1Err::Rc(rc));
             }
             self.nap();
-            loops = loops - 1;
+            loops -= 1;
         }
         Err(Boot1Err::SelfTestTimeout)
     }
@@ -202,7 +203,13 @@ impl<P: TisPhy> Boot1<P> {
     pub fn pcr_extend(&mut self, pcr_idx: u32, digest: &[u8]) -> Result<(), Boot1Err> {
         let len = build_pcr_extend(&mut self.cbuf, pcr_idx, digest);
         match self.exec(len) {
-            Ok((_n, rc)) => if rc == RC_SUCCESS { Ok(()) } else { Err(Boot1Err::Rc(rc)) }
+            Ok((_n, rc)) => {
+                if rc == RC_SUCCESS {
+                    Ok(())
+                } else {
+                    Err(Boot1Err::Rc(rc))
+                }
+            }
             Err(e) => Err(e),
         }
     }
@@ -366,7 +373,13 @@ impl<P: TisPhy> Boot1<P> {
     pub fn save_state(&mut self) -> Result<(), Boot1Err> {
         let len = build_save_state(&mut self.cbuf);
         match self.exec(len) {
-            Ok((_n, rc)) => if rc == RC_SUCCESS { Ok(()) } else { Err(Boot1Err::Rc(rc)) }
+            Ok((_n, rc)) => {
+                if rc == RC_SUCCESS {
+                    Ok(())
+                } else {
+                    Err(Boot1Err::Rc(rc))
+                }
+            }
             Err(e) => Err(e),
         }
     }

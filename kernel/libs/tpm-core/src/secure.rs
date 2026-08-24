@@ -1,13 +1,12 @@
-
-use crate::auth::{
-    AuthErr, CMD_SESSION_LEN, MAX_SESSIONS, RspAuth, write_cmd_session,
+use crate::{
+    auth::{AuthErr, CMD_SESSION_LEN, MAX_SESSIONS, RspAuth, write_cmd_session},
+    chip::MSG_MAX,
+    crypto::{HmacSha256Ctx, NonceSource, Sha256Ctx},
+    msg::TPM_HEADER_LEN,
+    phy::TisPhy,
+    session::AuthSession,
+    xfer::{RC_SUCCESS, Xfer, XferErr},
 };
-use crate::chip::MSG_MAX;
-use crate::crypto::{HmacSha256Ctx, NonceSource, Sha256Ctx};
-use crate::msg::TPM_HEADER_LEN;
-use crate::phy::TisPhy;
-use crate::session::AuthSession;
-use crate::xfer::{RC_SUCCESS, Xfer, XferErr};
 
 /// 一条带授权的命令在缓冲区里的分区。
 ///
@@ -21,9 +20,9 @@ pub struct CmdLayout {
     /// 本会话在授权区里的序号。
     pub index: usize,
     /// 参数区起点。
-    pub parm_off: usize,
+    pub param_off: usize,
     /// 参数区长度。
-    pub parm_len: usize,
+    pub param_len: usize,
     /// 响应里的句柄个数。摘要覆盖的是句柄之后的部分，数错一个，整段偏移全错。
     pub rhandles: usize,
 }
@@ -36,16 +35,17 @@ impl CmdLayout {}
 /// 于是持有一枚凭证这件事本身就是校验发生过的证据。
 ///
 /// 定位结果 `a` 反而可以公开：读几个偏移不构成任何能力，能力在于凭证本身。
-/// 它也不怕被改——[`Guarded::parms`] 要求出示 [`Authenticated::certified`]，
+/// 它也不怕被改——[`Guarded::params`] 要求出示 [`Authenticated::certified`]，
 /// 而那条性质是就 `a` 说的，改一个偏移就再也证不出来。
 ///
 /// 其余字段是幽灵值，记下铸造时刻的密钥材料、命令码、本端 nonce 与属性。
 /// 它们不参与运行时计算，只是让 [`Authenticated::certified`] 能把那条 MAC
 /// 等式完整地写出来——凭证若说不清自己证的是什么，就退化成了一个标记。
+#[non_exhaustive]
+#[expect(dead_code)]
 pub struct Authenticated {
     pub a: RspAuth,
     /// 封印。本模块之外无法赋值，因而无法构造本类型。
-    #[allow(dead_code)]
     seal: (),
 }
 impl Authenticated {}
@@ -64,7 +64,7 @@ pub struct Guarded<P: TisPhy> {
     /// 响应暂存区。**私有**——本层的全部保证都建立在模块之外拿不到它之上。
     rbuf: [u8; MSG_MAX],
     /// 暂存区里有效字节数。公开无妨：长度不是能力，而改动它只会让
-    /// [`Guarded::parms`] 的前置条件证不出来。
+    /// [`Guarded::params`] 的前置条件证不出来。
     pub rlen: usize,
 }
 impl<P: TisPhy> Guarded<P> {
@@ -98,11 +98,14 @@ impl<P: TisPhy> Guarded<P> {
         let nonce = self.sess.our_nonce;
         let sattrs = self.sess.attrs;
         write_cmd_session(cmd, lay.sess_off, handle, &nonce, sattrs);
-        self.sess
-            .finalize::<
-                S,
-                H,
-            >(cmd, lay.sess_off, lay.index, names, lay.parm_off, lay.parm_len);
+        self.sess.finalize::<S, H>(
+            cmd,
+            lay.sess_off,
+            lay.index,
+            names,
+            lay.param_off,
+            lay.param_len,
+        );
         let n = match self.x.run(&*cmd, lay.len, &mut self.rbuf) {
             Ok((n, rc)) => {
                 if rc != RC_SUCCESS {
@@ -122,20 +125,22 @@ impl<P: TisPhy> Guarded<P> {
             Ok(a) => a,
             Err(e) => return Err(SecErr::Auth(e)),
         };
+        {}
         Ok(Authenticated { a, seal: () })
     }
     /// 取出响应的参数区。
     ///
     /// 这是响应字节离开本结构体的**唯一出口**。前置条件要出示一枚与当前
     /// 暂存区内容匹配的凭证：没有凭证拿不到字节，凭证过期也拿不到。
-    pub fn parms<'a>(&'a self, t: &Authenticated) -> &'a [u8] {
-        let off = t.a.parm_off;
-        let len = t.a.parm_len;
+    pub fn params<'a>(&'a self, t: &Authenticated) -> &'a [u8] {
+        let off = t.a.param_off;
+        let len = t.a.param_len;
+        {}
         &self.rbuf[off..off + len]
     }
     /// 响应参数区的长度。凭证已经把它固定下来，读取前不必再解析一次报文。
-    pub fn parm_len(&self, t: &Authenticated) -> usize {
-        t.a.parm_len
+    pub fn param_len(&self, t: &Authenticated) -> usize {
+        t.a.param_len
     }
     /// 交回链路，结束授权阶段。
     ///
@@ -147,3 +152,4 @@ impl<P: TisPhy> Guarded<P> {
         self.x
     }
 }
+// verus!
