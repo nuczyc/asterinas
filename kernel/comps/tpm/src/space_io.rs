@@ -188,8 +188,13 @@ pub fn space_transmit<T: ChipTransport>(
     if let HeaderOutcome::OutOfSlots { flush } = outcome {
         // Match Linux tpm2_commit_space(): flush the untracked new handle,
         // discard the loaded work space, and leave the persistent table and
-        // context buffers untouched.
-        io.flush(flush);
+        // context buffers untouched. A flush failure is not a benign condition:
+        // if the TPM still holds the transient object, subsequent requests can
+        // exhaust object/session memory and trigger RC_OBJECT_MEMORY / RC_SESSION_MEMORY.
+        if let Err(e) = io.flush(flush) {
+            txn.abort(io);
+            return Err(XmitErr::Io(e));
+        }
         txn.abort(io);
         return Err(XmitErr::NoSlots);
     }

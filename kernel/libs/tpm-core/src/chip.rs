@@ -117,7 +117,6 @@ impl<T: ChipTransport> CtxIo<T> {
             self.cbuf[k] = hdr[k];
             k += 1;
         }
-        {}
     }
     /// 把整条命令原样交给底层传输，不做报文组装。
     ///
@@ -204,14 +203,24 @@ impl<T: ChipTransport> ContextIo for CtxIo<T> {
             out[off + k] = self.rbuf[HEADER_SIZE + k];
             k += 1;
         }
-        {};
         Ok(body)
     }
-    fn flush(&mut self, h: u32) {
+    fn flush(&mut self, h: u32) -> Result<(), IoErr> {
         self.put_header(CC_FLUSH_CONTEXT, HEADER_SIZE + 4);
         write_be32_arr(&mut self.cbuf, HEADER_SIZE, h);
         {}
-        let _ = self.tx.exec(&self.cbuf, &mut self.rbuf);
+        let n = match self.tx.exec(&self.cbuf, &mut self.rbuf) {
+            Ok(n) => n,
+            Err(e) => return Err(e),
+        };
+        if n < HEADER_SIZE {
+            return Err(IoErr::Protocol);
+        }
+        let rc = read_be32(&self.rbuf, 6);
+        if rc != RC_SUCCESS {
+            return Err(classify_rc(rc));
+        }
+        Ok(())
     }
 }
 /// [`write_be32`] 的定长数组版本。切片版要求 `&mut [u8]`，而这里操作的是
@@ -255,4 +264,3 @@ mod tests {
         assert!(matches!(err, Err(IoErr::NotFound)));
     }
 }
-// verus!

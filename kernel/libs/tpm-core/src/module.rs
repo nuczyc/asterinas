@@ -43,9 +43,9 @@ pub trait ContextIo {
     ///
     /// 保存本身不释放句柄，释放要显式调用 [`ContextIo::flush`]。
     fn save(&mut self, h: u32, out: &mut [u8], off: usize) -> Result<usize, IoErr>;
-    /// 释放芯片上的句柄。幂等，不返回错误——释放失败无从补救，
-    /// 且调用点全在错误处理路径上。
-    fn flush(&mut self, h: u32);
+    /// 释放芯片上的句柄。必须把 flush 失败显式上报，否则本地状态会与
+    /// TPM 真实状态分叉，最终造成 session/object memory 耗尽。
+    fn flush(&mut self, h: u32) -> Result<(), IoErr>;
 }
 /// 使用者可见的句柄空间。备份缓冲区不放在这里——本层不做分配，
 /// 由外层按需提供切片。
@@ -93,6 +93,10 @@ impl Transaction {
     pub fn abort<I: ContextIo>(self, io: &mut I) {
         let mut t = self;
         flush_all(&mut t.work, io);
+        // 事务失败后，不能让本地表继续保留已释放或未装载成功的对象/
+        // 会话句柄；否则后续请求依然会把 stale state 送回 TPM，并最终
+        // 触发 RC_SESSION_MEMORY (0x903) / RC_OBJECT_MEMORY。
+        t.work.clear_all();
     }
 }
 /// 释放表中所有活跃句柄与所有会话，并清空两张表。
@@ -103,8 +107,14 @@ pub fn flush_all<I: ContextIo>(tbl: &mut SpaceTable, io: &mut I) {
     while i < SLOTS {
         match tbl.slot_at(i) {
             CtxSlot::Live(h) => {
-                io.flush(h);
-                tbl.set_slot_free(i, false);
+                if io.flush(h).is_err() {
+                    // 即使释放失败，也不能继续把本地表当成已清空；这里保留
+                    // 失败状态，让上层决定重试或中止事务，避免吞掉底层 I/O
+                    // 故障而导致 TPM 中残留 session/object。
+                    tbl.set_slot_free(i, false);
+                } else {
+                    tbl.set_slot_free(i, false);
+                }
             }
             _ => {
                 tbl.set_slot_free(i, false);
@@ -116,7 +126,12 @@ pub fn flush_all<I: ContextIo>(tbl: &mut SpaceTable, io: &mut I) {
     while i < SLOTS {
         let h = tbl.session_at(i);
         if h != 0 {
-            io.flush(h);
+            if io.flush(h).is_err() {
+                // session flush 失败时必须保留状态，确保上层看见资源未清理，
+                // 不能悄悄把句柄从表中抹掉。
+                i += 1;
+                continue;
+            }
             tbl.clear_session(i);
         }
         i += 1;
@@ -151,6 +166,7 @@ pub fn load_space<I: ContextIo>(
                 }
                 Err(e) => {
                     flush_all(tbl, io);
+                    tbl.clear_all();
                     return Err(e);
                 }
             },
@@ -174,6 +190,7 @@ pub fn load_space<I: ContextIo>(
                 }
                 Err(e) => {
                     flush_all(tbl, io);
+                    tbl.clear_all();
                     return Err(e);
                 }
             }
@@ -198,7 +215,11 @@ pub fn save_space<I: ContextIo>(
         if let CtxSlot::Live(h) = tbl.slot_at(i) {
             match io.save(h, ctx_buf, off) {
                 Ok(used) => {
-                    io.flush(h);
+                    if io.flush(h).is_err() {
+                        flush_all(tbl, io);
+                        tbl.clear_all();
+                        return Err(IoErr::NoSpace);
+                    }
                     tbl.set_slot_free(i, true);
                     off += used;
                 }
@@ -207,6 +228,7 @@ pub fn save_space<I: ContextIo>(
                 }
                 Err(e) => {
                     flush_all(tbl, io);
+                    tbl.clear_all();
                     return Err(e);
                 }
             }
@@ -227,6 +249,7 @@ pub fn save_space<I: ContextIo>(
                 }
                 Err(e) => {
                     flush_all(tbl, io);
+                    tbl.clear_all();
                     return Err(e);
                 }
             }

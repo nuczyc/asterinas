@@ -125,6 +125,16 @@ impl SpaceTable {
     pub fn clear_session(&mut self, i: usize) {
         self.sessions[i] = 0;
     }
+    /// 彻底丢弃本 space 的所有对象与会话跟踪，防止上层在失败路径中留下
+    /// 与 TPM 实体状态不一致的本地镜像。
+    pub fn clear_all(&mut self) {
+        let mut i: usize = 0;
+        while i < SLOTS {
+            self.ctx[i] = CtxSlot::Empty;
+            self.sessions[i] = 0;
+            i += 1;
+        }
+    }
     pub fn slot_at(&self, i: usize) -> CtxSlot {
         self.ctx[i]
     }

@@ -116,9 +116,13 @@ where
     // 4. 响应方向：登记新句柄、改写句柄区
     match map_response_handle(w.table(), has_rhandle, rsp) {
         outcome if needs_flush(&outcome) => {
-            // 表满：句柄接管不了，必须在这里释放，否则它会永久占着芯片资源
+            // 表满：句柄接管不了，必须在这里释放，否则它会永久占着芯片资源。
+            // 释放失败也必须向上返回，而不能静默吞掉；否则 TPM 仍会持有
+            // 这个新的 transient object/session，之后继续触发 0x903/0x902。
             if let Some(h) = flush_target(&outcome) {
-                io.flush(h);
+                if let Err(e) = io.flush(h) {
+                    bail!(SpaceError::Io(e));
+                }
             }
             bail!(SpaceError::Io(IoErr::NoSpace));
         },
