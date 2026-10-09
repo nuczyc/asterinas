@@ -15,7 +15,6 @@ pub mod probe;
 pub mod rewrite;
 pub mod rsp;
 pub mod table;
-pub mod tpm1;
 pub mod types;
 
 // 会话授权层：可信密码学规约 -> 授权区编解码 -> 会话状态机
