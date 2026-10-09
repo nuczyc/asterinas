@@ -1,25 +1,25 @@
 use crate::{crypto::SHA256_LEN, cursor::*};
 
-pub const CC_SELF_TEST: u32 = 0x0000_0143;
-pub const CC_STARTUP: u32 = 0x0000_0144;
-pub const CC_SHUTDOWN: u32 = 0x0000_0145;
-pub const CC_CONTEXT_LOAD: u32 = 0x0000_0161;
-pub const CC_CONTEXT_SAVE: u32 = 0x0000_0162;
-pub const CC_FLUSH_CONTEXT: u32 = 0x0000_0165;
+pub(crate) const CC_SELF_TEST: u32 = 0x0000_0143;
+pub(crate) const CC_STARTUP: u32 = 0x0000_0144;
+pub(crate) const CC_SHUTDOWN: u32 = 0x0000_0145;
+pub(crate) const CC_CONTEXT_LOAD: u32 = 0x0000_0161;
+pub(crate) const CC_CONTEXT_SAVE: u32 = 0x0000_0162;
+pub(crate) const CC_FLUSH_CONTEXT: u32 = 0x0000_0165;
 pub const CC_GET_CAPABILITY: u32 = 0x0000_017A;
-pub const CC_GET_RANDOM: u32 = 0x0000_017B;
-pub const CC_PCR_READ: u32 = 0x0000_017E;
-pub const CC_PCR_EXTEND: u32 = 0x0000_0182;
+pub(crate) const CC_GET_RANDOM: u32 = 0x0000_017B;
+pub(crate) const CC_PCR_READ: u32 = 0x0000_017E;
+pub(crate) const CC_PCR_EXTEND: u32 = 0x0000_0182;
 pub const CAP_HANDLES: u32 = 0x0000_0001;
 pub const CAP_COMMANDS: u32 = 0x0000_0002;
 pub const CAP_PCRS: u32 = 0x0000_0005;
-pub const CAP_TPM_PROPERTIES: u32 = 0x0000_0006;
+pub(crate) const CAP_TPM_PROPERTIES: u32 = 0x0000_0006;
 pub const SU_CLEAR: u16 = 0x0000;
 pub const SU_STATE: u16 = 0x0001;
 /// PC Client 平台固定 24 个 PCR（TCG PC Client PFP）。
 pub const PLATFORM_PCR: u32 = 24;
 /// 覆盖 24 个 PCR 所需的选择位图字节数：ceil(24 / 8)。
-pub const PCR_SELECT_MIN: usize = 3;
+const PCR_SELECT_MIN: usize = 3;
 /// 单次取随机数的上限。超过这个量要分多次取。
 pub const MAX_RNG_DATA: u16 = 128;
 fn bit_value(n: u32) -> u8 {
@@ -45,7 +45,7 @@ fn bit_value(n: u32) -> u8 {
 ///
 /// 索引拆分用除法与取余而非移位与掩码：两者在 24 以内完全等价，
 /// 而除法形式可以直接进入整数推理，不必切换到位向量求解器。
-pub fn pcr_select_bitmap(pcr_idx: u32) -> [u8; PCR_SELECT_MIN] {
+fn pcr_select_bitmap(pcr_idx: u32) -> [u8; PCR_SELECT_MIN] {
     let byte_idx = pcr_idx / 8;
     let mask = bit_value(pcr_idx % 8);
     if byte_idx == 0 {
@@ -91,7 +91,7 @@ pub fn pcr_read_payload(alg_id: u16, pcr_idx: u32) -> [u8; 10] {
     ]
 }
 /// `TPM2_PCR_Extend` 的参数区长度：count(4) + hashAlg(2) + digest(32)。
-pub const PCR_EXTEND_PARAM_LEN: usize = 6 + SHA256_LEN;
+const PCR_EXTEND_PARAM_LEN: usize = 6 + SHA256_LEN;
 /// `TPM2_PCR_Extend` 的**参数区**（Part 3 §22.2）。
 ///
 /// ```text

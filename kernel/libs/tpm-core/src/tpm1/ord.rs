@@ -1,17 +1,17 @@
-pub const ORD_EXTEND: u32 = 20;
-pub const ORD_PCR_READ: u32 = 21;
-pub const ORD_GET_RANDOM: u32 = 70;
-pub const ORD_GET_CAPABILITY: u32 = 101;
-pub const ORD_CONTINUE_SELF_TEST: u32 = 83;
-pub const ORD_SAVE_STATE: u32 = 152;
-pub const ORD_STARTUP: u32 = 153;
-pub const DUR_SHORT: u8 = 0;
-pub const DUR_MEDIUM: u8 = 1;
-pub const DUR_LONG: u8 = 2;
+pub(crate) const ORD_EXTEND: u32 = 20;
+pub(crate) const ORD_PCR_READ: u32 = 21;
+pub(crate) const ORD_GET_RANDOM: u32 = 70;
+pub(crate) const ORD_GET_CAPABILITY: u32 = 101;
+pub(crate) const ORD_CONTINUE_SELF_TEST: u32 = 83;
+pub(crate) const ORD_SAVE_STATE: u32 = 152;
+pub(crate) const ORD_STARTUP: u32 = 153;
+const DUR_SHORT: u8 = 0;
+const DUR_MEDIUM: u8 = 1;
+const DUR_LONG: u8 = 2;
 /// 该编号没有登记时长档。落到这一档的命令用调用方给的兜底时长等待。
-pub const DUR_UNDEFINED: u8 = 3;
+const DUR_UNDEFINED: u8 = 3;
 /// 登记了时长档的编号上界。超过它的编号一律按未登记处理。
-pub const MAX_ORDINAL: usize = 243;
+const MAX_ORDINAL: usize = 243;
 /// 编号 → 时长档。
 ///
 /// 表里只覆盖那些执行时间可预期的命令。取值为 [`DUR_UNDEFINED`] 的位置有两类:
@@ -31,7 +31,7 @@ const ORDINAL_DURATION: [u8; MAX_ORDINAL] = [
 ///
 /// 越界的编号直接判未登记,不触碰数组——边界检查在取值之前完成,这是全函数
 /// 唯一的安全论据。
-pub fn duration_class(ord: u32) -> u8 {
+fn duration_class(ord: u32) -> u8 {
     if ord >= MAX_ORDINAL as u32 {
         DUR_UNDEFINED
     } else {

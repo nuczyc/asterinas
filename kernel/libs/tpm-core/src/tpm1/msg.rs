@@ -3,10 +3,10 @@ use crate::cursor::*;
 pub const HEADER_LEN: usize = 10;
 /// 请求标签。本驱动只构造这一种——它不参与任何需要授权会话的操作,因此永远
 /// 不会用到带授权区的请求标签。
-pub const TAG_RQU_COMMAND: u16 = 0x00C1;
+const TAG_RQU_COMMAND: u16 = 0x00C1;
 /// 期望的响应标签。器件对一条无授权请求的应答固定用它;收到别的标签说明
 /// 应答与请求不配对,按格式错误处理。
-pub const TAG_RSP_COMMAND: u16 = 0x00C4;
+const TAG_RSP_COMMAND: u16 = 0x00C4;
 pub const RC_SUCCESS: u32 = 0x0000_0000;
 #[derive(PartialEq, Eq)]
 pub enum Parse1Error {
@@ -30,7 +30,7 @@ impl<'a> Response1<'a> {}
 /// 拒绝四类输入:长度不足一个头部、长度字段与实到字节数不符、标签不是预期的
 /// 应答标签、返回码非零。返回码非零时不再往下解析载荷——失败应答的载荷内容
 /// 无从约束。
-pub fn parse_response1(raw: &[u8]) -> Result<Response1<'_>, Parse1Error> {
+pub(crate) fn parse_response1(raw: &[u8]) -> Result<Response1<'_>, Parse1Error> {
     if raw.len() < HEADER_LEN {
         return Err(Parse1Error::Truncated);
     }
@@ -64,7 +64,7 @@ pub fn parse_response1(raw: &[u8]) -> Result<Response1<'_>, Parse1Error> {
 /// 标签写死为请求标签,长度字段一次写定。命令层的载荷长度都是编译期常量,
 /// 没有「先写载荷再回填长度」的必要,而回填正是长度字段与实际字节数走散的
 /// 唯一入口。
-pub fn build_header1(ordinal: u32, total_size: u32) -> [u8; 10] {
+pub(crate) fn build_header1(ordinal: u32, total_size: u32) -> [u8; 10] {
     let t = be16_bytes(TAG_RQU_COMMAND);
     let s = be32_bytes(total_size);
     let c = be32_bytes(ordinal);

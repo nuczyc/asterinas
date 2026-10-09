@@ -29,32 +29,32 @@ pub const ERR_INVALID_POSTINIT: u32 = 0x0000_0026;
 /// 自检未通过。器件可能需要固件升级;这是一个要让调用方看见的结论。
 pub const ERR_FAILEDSELFTEST: u32 = 0x0000_001C;
 /// 属性类查询。
-pub const CAP_PROPERTY: u32 = 0x0000_0005;
+const CAP_PROPERTY: u32 = 0x0000_0005;
 /// 子项:器件拥有的 PCR 数。
 pub const PROP_PCR: u32 = 0x0000_0101;
 /// 子项:三档命令时长。
-pub const PROP_DURATION: u32 = 0x0000_0120;
+const PROP_DURATION: u32 = 0x0000_0120;
 /// 子项:四档 TIS 超时。
-pub const PROP_TIS_TIMEOUT: u32 = 0x0000_0115;
+const PROP_TIS_TIMEOUT: u32 = 0x0000_0115;
 /// 四档超时默认值:A/C/D 各 0.75 秒,B 档 4 秒。
-pub const TO_DEF_A_US: u32 = 750_000;
-pub const TO_DEF_B_US: u32 = 4_000_000;
-pub const TO_DEF_C_US: u32 = 750_000;
-pub const TO_DEF_D_US: u32 = 750_000;
+const TO_DEF_A_US: u32 = 750_000;
+const TO_DEF_B_US: u32 = 4_000_000;
+const TO_DEF_C_US: u32 = 750_000;
+const TO_DEF_D_US: u32 = 750_000;
 /// 三档时长默认值。
-pub const DUR_DEF_SHORT_US: u32 = 750_000;
-pub const DUR_DEF_MEDIUM_US: u32 = 2_000_000;
-pub const DUR_DEF_LONG_US: u32 = 30_000_000;
+const DUR_DEF_SHORT_US: u32 = 750_000;
+const DUR_DEF_MEDIUM_US: u32 = 2_000_000;
+const DUR_DEF_LONG_US: u32 = 30_000_000;
 /// 短档时长的可信下界。低于它判定为毫秒误写微秒。
-pub const DUR_SHORT_THRESHOLD_US: u32 = 10_000;
+const DUR_SHORT_THRESHOLD_US: u32 = 10_000;
 /// 触发修正后,短档托底到的值。
-pub const DUR_SHORT_FLOOR_US: u32 = 1_000_000;
+const DUR_SHORT_FLOOR_US: u32 = 1_000_000;
 /// 响应暂存区。最长的响应是取随机数:报文头 10 + 长度前缀 4 + 数据 128。取 256
 /// 留出余量,同时压得足够小,可以放在栈上。
-pub const RSP1_MAX: usize = 256;
+const RSP1_MAX: usize = 256;
 /// 自检轮询的最大轮数。每轮之间等一个退避间隔,轮数封顶保证轮询必然终止——
 /// 器件若一直不退出自检,本层等到轮数用尽就报超时,而不是无限等下去。
-pub const SELFTEST_LOOPS: u32 = 300;
+const SELFTEST_LOOPS: u32 = 300;
 #[derive(PartialEq, Eq)]
 pub enum Boot1Err {
     /// 链路不处于可以发起命令的状态。

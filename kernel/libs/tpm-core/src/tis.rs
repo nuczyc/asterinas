@@ -1,22 +1,22 @@
-pub const ACCESS_VALID: u8 = 0x80;
-pub const ACCESS_ACTIVE_LOCALITY: u8 = 0x20;
+pub(crate) const ACCESS_VALID: u8 = 0x80;
+pub(crate) const ACCESS_ACTIVE_LOCALITY: u8 = 0x20;
 pub const ACCESS_REQUEST_PENDING: u8 = 0x04;
-pub const ACCESS_REQUEST_USE: u8 = 0x02;
-pub const STS_VALID: u8 = 0x80;
-pub const STS_COMMAND_READY: u8 = 0x40;
-pub const STS_GO: u8 = 0x20;
-pub const STS_DATA_AVAIL: u8 = 0x10;
-pub const STS_DATA_EXPECT: u8 = 0x08;
+pub(crate) const ACCESS_REQUEST_USE: u8 = 0x02;
+pub(crate) const STS_VALID: u8 = 0x80;
+pub(crate) const STS_COMMAND_READY: u8 = 0x40;
+pub(crate) const STS_GO: u8 = 0x20;
+pub(crate) const STS_DATA_AVAIL: u8 = 0x10;
+pub(crate) const STS_DATA_EXPECT: u8 = 0x08;
 pub const STS_RESPONSE_RETRY: u8 = 0x02;
 /// locality 取值范围。
 pub const MAX_LOCALITY: u8 = 5;
-pub fn reg_access(l: u8) -> u32 {
+pub(crate) fn reg_access(l: u8) -> u32 {
     (l as u32) * 4096u32
 }
-pub fn reg_sts(l: u8) -> u32 {
+pub(crate) fn reg_sts(l: u8) -> u32 {
     0x0018u32 + (l as u32) * 4096u32
 }
-pub fn reg_data_fifo(l: u8) -> u32 {
+pub(crate) fn reg_data_fifo(l: u8) -> u32 {
     0x0024u32 + (l as u32) * 4096u32
 }
 pub fn reg_did_vid(l: u8) -> u32 {
@@ -25,8 +25,8 @@ pub fn reg_did_vid(l: u8) -> u32 {
 /// 单次轮询间隔（毫秒）。
 pub const POLL_INTERVAL_MS: u32 = 1;
 /// 规范给出的四档超时（毫秒）。
-pub const TIMEOUT_A_MS: u32 = 750;
-pub const TIMEOUT_B_MS: u32 = 30000;
+pub(crate) const TIMEOUT_A_MS: u32 = 750;
+pub(crate) const TIMEOUT_B_MS: u32 = 30000;
 pub const TIMEOUT_C_MS: u32 = 750;
 pub const TIMEOUT_D_MS: u32 = 750;
 /// 把毫秒超时折算成轮询次数。

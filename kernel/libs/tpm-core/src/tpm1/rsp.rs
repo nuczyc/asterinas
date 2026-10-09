@@ -8,7 +8,7 @@ pub const RANDOM_MAX: usize = 128;
 /// 体布局:`respSize u32` 后跟 `respSize` 字节。这里只取「值是一个 u32」的形态:
 /// 先读长度前缀,确认它至少覆盖 4 字节,再取那 4 字节。长度前缀不足 4 时报格式
 /// 错误,而不是去读前缀之外的字节。
-pub fn parse_cap_u32(body: &[u8]) -> Result<u32, Parse1Error> {
+pub(crate) fn parse_cap_u32(body: &[u8]) -> Result<u32, Parse1Error> {
     let mut c = Cursor::new();
     let resp_size = match c.read_be32(body) {
         Some(v) => v,
@@ -45,7 +45,7 @@ pub fn parse_cap_bytes(body: &[u8], max: usize) -> Result<&[u8], Parse1Error> {
 ///
 /// 体布局:`respSize u32` 后跟若干 u32。这里要三个,因此长度前缀必须至少覆盖
 /// 12 字节;不足则报格式错误,不去读前缀之外的字节。
-pub fn parse_cap_u32_triple(body: &[u8]) -> Result<(u32, u32, u32), Parse1Error> {
+pub(crate) fn parse_cap_u32_triple(body: &[u8]) -> Result<(u32, u32, u32), Parse1Error> {
     let mut c = Cursor::new();
     let resp_size = match c.read_be32(body) {
         Some(v) => v,
@@ -72,7 +72,7 @@ pub fn parse_cap_u32_triple(body: &[u8]) -> Result<(u32, u32, u32), Parse1Error>
 ///
 /// 体布局:`respSize u32` 后跟四个 u32。长度前缀必须至少覆盖 16 字节;不足则报
 /// 格式错误,不去读前缀之外的字节。
-pub fn parse_cap_u32_quad(body: &[u8]) -> Result<(u32, u32, u32, u32), Parse1Error> {
+pub(crate) fn parse_cap_u32_quad(body: &[u8]) -> Result<(u32, u32, u32, u32), Parse1Error> {
     let mut c = Cursor::new();
     let resp_size = match c.read_be32(body) {
         Some(v) => v,
@@ -100,7 +100,7 @@ pub fn parse_cap_u32_quad(body: &[u8]) -> Result<(u32, u32, u32, u32), Parse1Err
     Ok((a, b, d, e))
 }
 /// 摘要长度。1.2 的 PCR 一律是这个宽度。
-pub const PCR_DIGEST_LEN: usize = 20;
+const PCR_DIGEST_LEN: usize = 20;
 /// 解析一次 PCR 读取。
 ///
 /// 体就是摘要本身,无长度前缀。取固定宽度即可;体不足这个宽度说明响应被截断。
@@ -116,7 +116,7 @@ pub fn parse_pcr_read(body: &[u8]) -> Result<&[u8], Parse1Error> {
 /// 体布局:`size u32` 后跟 `size` 字节。对端给的字节数超过请求上限同样按异常
 /// 处理——那说明它没有遵守请求里的界。返回的切片保证落在载荷内、长度不超过
 /// `max`。
-pub fn parse_get_random(body: &[u8], max: u16) -> Result<&[u8], Parse1Error> {
+pub(crate) fn parse_get_random(body: &[u8], max: u16) -> Result<&[u8], Parse1Error> {
     let mut c = Cursor::new();
     let size = match c.read_be32(body) {
         Some(v) => v,

@@ -11,13 +11,13 @@ pub const AES_BLOCK_LEN: usize = 16;
 /// 单轮，见那里的说明。
 pub const CFB_MATERIAL_LEN: usize = AES_KEY_LEN + AES_BLOCK_LEN;
 /// 口令在会话结构里的存放上限。
-pub const PASSPHRASE_MAX: usize = SHA256_LEN;
+pub(crate) const PASSPHRASE_MAX: usize = SHA256_LEN;
 /// HMAC 密钥材料上限：会话密钥后面拼接口令。
-pub const KEY_MATERIAL_MAX: usize = SHA256_LEN + PASSPHRASE_MAX;
-pub fn be16_arr(v: u16) -> [u8; 2] {
+pub(crate) const KEY_MATERIAL_MAX: usize = SHA256_LEN + PASSPHRASE_MAX;
+pub(crate) fn be16_arr(v: u16) -> [u8; 2] {
     crate::cursor::be16_bytes(v)
 }
-pub fn be32_arr(v: u32) -> [u8; 4] {
+pub(crate) fn be32_arr(v: u32) -> [u8; 4] {
     crate::cursor::be32_bytes(v)
 }
 pub fn group_crypto_axioms() {
@@ -42,9 +42,9 @@ pub trait AesCfb {
     fn decrypt(&self, material: &[u8; CFB_MATERIAL_LEN], data: &mut [u8]);
 }
 /// 会话密钥派生标签（含尾零）。
-pub const LABEL_ATH: [u8; 4] = [0x41, 0x54, 0x48, 0x00];
+pub(crate) const LABEL_ATH: [u8; 4] = [0x41, 0x54, 0x48, 0x00];
 /// 参数加解密密钥派生标签（含尾零）。
-pub const LABEL_CFB: [u8; 4] = [0x43, 0x46, 0x42, 0x00];
+pub(crate) const LABEL_CFB: [u8; 4] = [0x43, 0x46, 0x42, 0x00];
 /// 派生 32 字节密钥材料。
 ///
 /// 计数器只走一轮。本层要派生的两样东西——会话密钥、参数加解密的密钥
@@ -52,7 +52,7 @@ pub const LABEL_CFB: [u8; 4] = [0x43, 0x46, 0x42, 0x00];
 /// 调用者。固定成单轮之后，循环不变量与终止性都不必再证，规约也只剩
 /// 一条等式。若将来需要更长的输出，应当另写一个带 `decreases` 的多轮
 /// 版本，而不是把这个函数改成循环——那会让现有调用点的证明全部重来。
-pub fn kdfa32<H: HmacSha256Ctx>(key: &[u8], label: &[u8], u: &[u8], v: &[u8]) -> [u8; SHA256_LEN] {
+pub(crate) fn kdfa32<H: HmacSha256Ctx>(key: &[u8], label: &[u8], u: &[u8], v: &[u8]) -> [u8; SHA256_LEN] {
     let mut h = H::with_key(key);
     let counter = be32_arr(1);
     let bits = be32_arr(256);

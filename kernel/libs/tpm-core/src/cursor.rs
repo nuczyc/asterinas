@@ -1,9 +1,9 @@
 /// 整数 → 大端字节。与 `spec_be16_at` 互为逆运算。
-pub fn be16_bytes(v: u16) -> [u8; 2] {
+pub(crate) fn be16_bytes(v: u16) -> [u8; 2] {
     [(v / 256) as u8, (v % 256) as u8]
 }
 /// 整数 → 大端字节。与 `spec_be32_at` 互为逆运算。
-pub fn be32_bytes(v: u32) -> [u8; 4] {
+pub(crate) fn be32_bytes(v: u32) -> [u8; 4] {
     [
         (v / 16777216) as u8,
         ((v / 65536) % 256) as u8,
@@ -101,7 +101,7 @@ impl Cursor {
 /// 切片中是否存在非零字节。
 ///
 /// PCR 分配解析要靠它判断某个 bank 是否真的被分配（选择位图全零即未分配）。
-pub fn any_nonzero(s: &[u8]) -> bool {
+pub(crate) fn any_nonzero(s: &[u8]) -> bool {
     let n = s.len();
     let mut i: usize = 0;
     while i < n {

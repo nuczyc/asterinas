@@ -8,24 +8,24 @@ use crate::{
 pub const RC_SUCCESS: u32 = 0x0000_0000;
 /// 位 7 置位表示「格式一」返回码：低 6 位是错误号，位 8..11 是出错的
 /// 句柄 / 参数 / 会话序号。分类时必须先把序号位抹掉。
-pub const RC_FMT1_BIT: u32 = 0x0000_0080;
+const RC_FMT1_BIT: u32 = 0x0000_0080;
 /// TPM Format-1 返回码中的 selector bits：
 /// - bit 6 (`TPM_RC_P`) 表示参数选择器；
 /// - bits 8..11 (`TPM_RC_N`) 表示对象 / 会话编号；
 ///   这两部分必须在分类前清掉，否则 `TPM_RC_HANDLE | P | N` 会被误判成
 ///   另一个错误码。
-pub const RC_FMT1_MASK: u32 = 0x0000_00BF;
-pub const RC_HANDLE: u32 = 0x0000_008B;
-pub const RC_INTEGRITY: u32 = 0x0000_009F;
-pub const RC_CONTEXT_GAP: u32 = 0x0000_0901;
-pub const RC_OBJECT_MEMORY: u32 = 0x0000_0902;
-pub const RC_SESSION_MEMORY: u32 = 0x0000_0903;
-pub const RC_MEMORY: u32 = 0x0000_0904;
-pub const RC_REFERENCE_H0: u32 = 0x0000_0910;
+const RC_FMT1_MASK: u32 = 0x0000_00BF;
+const RC_HANDLE: u32 = 0x0000_008B;
+const RC_INTEGRITY: u32 = 0x0000_009F;
+const RC_CONTEXT_GAP: u32 = 0x0000_0901;
+const RC_OBJECT_MEMORY: u32 = 0x0000_0902;
+const RC_SESSION_MEMORY: u32 = 0x0000_0903;
+const RC_MEMORY: u32 = 0x0000_0904;
+const RC_REFERENCE_H0: u32 = 0x0000_0910;
 pub const RC_YIELDED: u32 = 0x0000_0908;
 pub const RC_TESTING: u32 = 0x0000_090A;
 pub const RC_RETRY: u32 = 0x0000_0922;
-pub fn rc_value(rc: u32) -> u32 {
+fn rc_value(rc: u32) -> u32 {
     if rc & RC_FMT1_BIT == RC_FMT1_BIT {
         rc & RC_FMT1_MASK
     } else {
@@ -38,7 +38,7 @@ pub fn rc_value(rc: u32) -> u32 {
 /// 已不存在」，编排层据此把对应槽位直接遗忘而不是让整条路径失败——所以
 /// 这里只能放真正表示「引用了不存在的对象」的两个返回码，放宽会让状态
 /// 不一致被静默吞掉。
-pub fn classify_rc(rc: u32) -> IoErr {
+fn classify_rc(rc: u32) -> IoErr {
     let v = rc_value(rc);
     if v == RC_HANDLE || v == RC_REFERENCE_H0 {
         IoErr::NotFound
@@ -57,9 +57,9 @@ pub fn classify_rc(rc: u32) -> IoErr {
     }
 }
 /// 备份块的定长前缀：序号 8 字节、句柄 4 字节、层级 4 字节、数据长度 2 字节。
-pub const CTX_FIXED: usize = 18;
+const CTX_FIXED: usize = 18;
 /// 数据长度字段在备份块内的偏移。
-pub const CTX_SIZE_OFF: usize = 16;
+const CTX_SIZE_OFF: usize = 16;
 /// 一次完整的命令 / 响应往返。
 ///
 /// 这是本层与芯片之间唯一的接触点。实现方要么把假设直接摆在自己的
@@ -91,7 +91,7 @@ pub trait ChipTransport {
 /// 命令与响应暂存区的容量。上下文数据块可以接近一页，两个缓冲区
 /// 内联在结构体里共 8 KiB；若目标平台栈紧张，把它们换成调用方提供的
 /// 切片即可，本模块的证明不依赖它们的存储方式。
-pub const MSG_MAX: usize = 4096;
+pub(crate) const MSG_MAX: usize = 4096;
 /// 把 [`ChipTransport`] 抬成编排层要的 [`ContextIo`]。
 ///
 /// 这一层是完全验证的：它做的全部事情是长度校验、报文组装、返回码分类。

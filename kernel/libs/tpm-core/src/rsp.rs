@@ -1,23 +1,23 @@
 use crate::{cursor::*, msg::ParseError};
 
 /// 同时可分配的 PCR bank 数上界。
-pub const MAX_PCR_BANKS: usize = 5;
+const MAX_PCR_BANKS: usize = 5;
 /// 可接受的 `sizeofSelect` 上界。PC Client 平台固定 24 个 PCR（3 字节），
 /// 这里留出余量，但绝不接受对端给出的任意长度。
-pub const PCR_SELECT_MAX: usize = 8;
+const PCR_SELECT_MAX: usize = 8;
 /// 摘要长度上界（SHA-512）。
-pub const MAX_DIGEST_SIZE: usize = 64;
-pub const ALG_SHA1: u16 = 0x0004;
-pub const ALG_SHA256: u16 = 0x000B;
-pub const ALG_SHA384: u16 = 0x000C;
-pub const ALG_SHA512: u16 = 0x000D;
-pub const ALG_SM3_256: u16 = 0x0012;
+const MAX_DIGEST_SIZE: usize = 64;
+const ALG_SHA1: u16 = 0x0004;
+const ALG_SHA256: u16 = 0x000B;
+const ALG_SHA384: u16 = 0x000C;
+const ALG_SHA512: u16 = 0x000D;
+const ALG_SM3_256: u16 = 0x0012;
 /// 已知算法的摘要长度。
 ///
 /// 返回 `0` 表示"本实现不认识这个算法"——不是错误，只是长度需要另行
 /// 探测（读一次 PCR 0 即可）。把未知算法当成错误会让驱动在启用了新
 /// 摘要算法的设备上直接拒绝工作，代价过大。
-pub fn digest_size_of(alg_id: u16) -> u16 {
+fn digest_size_of(alg_id: u16) -> u16 {
     if alg_id == ALG_SHA1 {
         20
     } else if alg_id == ALG_SHA256 {
@@ -45,7 +45,7 @@ pub fn digest_size_of(alg_id: u16) -> u16 {
 ///
 /// 计数为零是合法响应（对端处于固件升级模式时会这样答），但调用方拿
 /// 不到值，所以按"无数据"报错而不是返回一个凭空捏造的零。
-pub fn parse_tpm_property(body: &[u8]) -> Result<u32, ParseError> {
+pub(crate) fn parse_tpm_property(body: &[u8]) -> Result<u32, ParseError> {
     let mut c = Cursor::new();
     match c.read_u8(body) {
         Some(_) => {}

@@ -2,13 +2,13 @@
 const U32_MAX_U64: u64 = 0xFFFF_FFFF;
 /// TIS 超时 A 档的合理量级在几十万微秒。报出的值虽非零却小于这个界,只可能是
 /// 把毫秒当微秒写了——正常的微秒读数不会落到这么小。
-pub const TIMEOUT_USEC_THRESHOLD: u32 = 1000;
+const TIMEOUT_USEC_THRESHOLD: u32 = 1000;
 /// 乘 1000,溢出则钉在 u32 上限。
 ///
 /// 用 u64 中转,乘法本身不可能溢出(u32 最大值乘 1000 仍远在 u64 之内),因此
 /// 这是个全函数。两条后置条件:结果不小于输入(缩放只会放大),且输入为正则
 /// 结果为正(乘法保正)——后者是上层「时长恒为正」契约的下半截。
-pub fn sat_mul_1000(v: u32) -> u32 {
+fn sat_mul_1000(v: u32) -> u32 {
     let w: u64 = (v as u64) * 1000;
     if w > U32_MAX_U64 {
         0xFFFF_FFFF
@@ -28,7 +28,7 @@ pub struct Timeouts {
 /// 两步:先把报 0 的档用驱动默认值回填(默认值恒正,回填后该档恒正);再看 A
 /// 档是否落在毫秒误写微秒的区间,是则四档同乘 1000。乘法保正,故修正后四档
 /// 恒正——这正是等待预算不为零的前提。
-pub fn scale_timeouts(chip: Timeouts, defaults: Timeouts) -> Timeouts {
+pub(crate) fn scale_timeouts(chip: Timeouts, defaults: Timeouts) -> Timeouts {
     let mut a = if chip.a != 0 { chip.a } else { defaults.a };
     let mut b = if chip.b != 0 { chip.b } else { defaults.b };
     let mut c = if chip.c != 0 { chip.c } else { defaults.c };
@@ -55,7 +55,7 @@ pub struct Durations {
 ///
 /// 阈值与地板值由调用方给出:它们在 C 里是从 jiffies 常量推来的,换算属于宿主
 /// 设施,不进本模块。
-pub fn scale_durations(
+pub(crate) fn scale_durations(
     chip: Durations,
     defaults: Durations,
     short_threshold: u32,

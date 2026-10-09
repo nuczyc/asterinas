@@ -10,40 +10,40 @@
 // 控制区寄存器偏移
 // ===========================================================================
 
-pub const REG_LOC_STATE: u32 = 0x0000;
-pub const REG_LOC_CTRL: u32 = 0x0008;
-pub const REG_CTRL_REQ: u32 = 0x0040;
-pub const REG_CTRL_STS: u32 = 0x0044;
-pub const REG_CTRL_CANCEL: u32 = 0x0048;
-pub const REG_CTRL_START: u32 = 0x004C;
-pub const REG_CTRL_CMD_SIZE: u32 = 0x0058;
+pub(crate) const REG_LOC_STATE: u32 = 0x0000;
+pub(crate) const REG_LOC_CTRL: u32 = 0x0008;
+pub(crate) const REG_CTRL_REQ: u32 = 0x0040;
+pub(crate) const REG_CTRL_STS: u32 = 0x0044;
+pub(crate) const REG_CTRL_CANCEL: u32 = 0x0048;
+pub(crate) const REG_CTRL_START: u32 = 0x004C;
+pub(crate) const REG_CTRL_CMD_SIZE: u32 = 0x0058;
 pub const REG_CTRL_RSP_SIZE: u32 = 0x0064;
 
 // ===========================================================================
 // 寄存器位
 // ===========================================================================
 
-pub const LOC_CTRL_REQUEST: u32 = 0x01;
-pub const LOC_CTRL_RELINQUISH: u32 = 0x02;
+pub(crate) const LOC_CTRL_REQUEST: u32 = 0x01;
+pub(crate) const LOC_CTRL_RELINQUISH: u32 = 0x02;
 
-pub const LOC_STATE_ASSIGNED: u32 = 0x02;
-pub const LOC_STATE_VALID: u32 = 0x80;
+pub(crate) const LOC_STATE_ASSIGNED: u32 = 0x02;
+pub(crate) const LOC_STATE_VALID: u32 = 0x80;
 
-pub const CTRL_REQ_CMD_READY: u32 = 0x01;
-pub const CTRL_REQ_GO_IDLE: u32 = 0x02;
+pub(crate) const CTRL_REQ_CMD_READY: u32 = 0x01;
+pub(crate) const CTRL_REQ_GO_IDLE: u32 = 0x02;
 
-pub const CTRL_STS_ERROR: u32 = 0x01;
+pub(crate) const CTRL_STS_ERROR: u32 = 0x01;
 
-pub const CTRL_START_INVOKE: u32 = 0x01;
+pub(crate) const CTRL_START_INVOKE: u32 = 0x01;
 
-pub const CTRL_CANCEL_CLEAR: u32 = 0x00;
+pub(crate) const CTRL_CANCEL_CLEAR: u32 = 0x00;
 
 // ===========================================================================
 // 缓冲区映射上界
 // ===========================================================================
 
-pub const CMD_BUF_CAP: usize = 4096;
-pub const RSP_BUF_CAP: usize = 4096;
+pub(crate) const CMD_BUF_CAP: usize = 4096;
+pub(crate) const RSP_BUF_CAP: usize = 4096;
 
 // ===========================================================================
 // locality 取值范围
@@ -61,7 +61,7 @@ pub const POLL_INTERVAL_MS: u32 = 1;
 pub const TIMEOUT_C_MS: u32 = 750;
 
 /// 命令执行完成的超时。
-pub const TIMEOUT_LONG_MS: u32 = 4000;
+pub(crate) const TIMEOUT_LONG_MS: u32 = 4000;
 
 /// 把毫秒超时折算成轮询次数，至少返回 1。
 #[inline]

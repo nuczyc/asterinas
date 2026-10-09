@@ -12,24 +12,24 @@ use crate::{
 ///
 /// 它出现在启动命令的响应里时，含义是「这条命令来晚了，器件早已启动」。
 /// 引导层把它按成功处理，见 [`Boot::startup`] 的说明。
-pub const RC_INITIALIZE: u32 = 0x0000_0100;
+const RC_INITIALIZE: u32 = 0x0000_0100;
 /// 自检正在后台进行。
 pub const RC_TESTING: u32 = 0x0000_090A;
 /// 器件能接收的最长命令。
-pub const PT_MAX_COMMAND_SIZE: u32 = 0x0000_011E;
+const PT_MAX_COMMAND_SIZE: u32 = 0x0000_011E;
 /// 器件能产生的最长响应。
-pub const PT_MAX_RESPONSE_SIZE: u32 = 0x0000_011F;
+const PT_MAX_RESPONSE_SIZE: u32 = 0x0000_011F;
 /// 单个对象备份块的最大长度。
-pub const PT_MAX_OBJECT_CONTEXT: u32 = 0x0000_0121;
+const PT_MAX_OBJECT_CONTEXT: u32 = 0x0000_0121;
 /// 单个会话备份块的最大长度。
-pub const PT_MAX_SESSION_CONTEXT: u32 = 0x0000_0122;
+const PT_MAX_SESSION_CONTEXT: u32 = 0x0000_0122;
 const SELF_TEST_FULL: u8 = 1;
 const SELF_TEST_INCREMENTAL: u8 = 0;
 /// 引导命令的最长者：报文头 10 字节 + 能力查询的三个 u32。
-pub const BOOT_CMD_MAX: usize = 22;
+const BOOT_CMD_MAX: usize = 22;
 /// 引导响应的容量。单条属性的应答是报文头 10 + 定长前缀 9 + 一对键值 8 =
 /// 27 字节；取 128 留出余量，同时把这块暂存区压得足够小，可以安心放在栈上。
-pub const BOOT_RSP_MAX: usize = 128;
+const BOOT_RSP_MAX: usize = 128;
 #[derive(PartialEq, Eq)]
 pub enum BootErr {
     /// 宿主提供的密码学接口与本驱动的假设对不上。

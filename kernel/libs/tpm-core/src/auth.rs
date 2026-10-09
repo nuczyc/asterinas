@@ -15,12 +15,12 @@ pub const SA_ENCRYPT: u8 = 0x40;
 /// 的会话，解析侧仍要能跳过它们——跳过的轮数必须有上界，否则一条精心
 /// 构造的响应就能把解析循环拖住。
 pub const MAX_SESSIONS: usize = 3;
-pub const SESS_HANDLE_OFF: usize = 0;
-pub const SESS_NONCE_SIZE_OFF: usize = 4;
-pub const SESS_NONCE_OFF: usize = 6;
-pub const SESS_ATTRS_OFF: usize = SESS_NONCE_OFF + NONCE_LEN;
-pub const SESS_HMAC_SIZE_OFF: usize = SESS_ATTRS_OFF + 1;
-pub const SESS_HMAC_OFF: usize = SESS_HMAC_SIZE_OFF + 2;
+const SESS_HANDLE_OFF: usize = 0;
+const SESS_NONCE_SIZE_OFF: usize = 4;
+const SESS_NONCE_OFF: usize = 6;
+const SESS_ATTRS_OFF: usize = SESS_NONCE_OFF + NONCE_LEN;
+const SESS_HMAC_SIZE_OFF: usize = SESS_ATTRS_OFF + 1;
+const SESS_HMAC_OFF: usize = SESS_HMAC_SIZE_OFF + 2;
 /// 单个命令侧会话占用的字节数。
 pub const CMD_SESSION_LEN: usize = SESS_HMAC_OFF + NONCE_LEN;
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -35,7 +35,7 @@ pub enum AuthErr {
     /// 重算出的 HMAC 与收到的不符。
     HmacMismatch,
 }
-pub fn auth_hmac<H: HmacSha256Ctx>(
+pub(crate) fn auth_hmac<H: HmacSha256Ctx>(
     key: &[u8],
     digest: &[u8; SHA256_LEN],
     newer: &[u8; NONCE_LEN],
@@ -50,7 +50,7 @@ pub fn auth_hmac<H: HmacSha256Ctx>(
     h.update(&tail[..]);
     h.finish()
 }
-pub fn rp_hash<S: Sha256Ctx>(rc: u32, ordinal: u32, params: &[u8]) -> [u8; SHA256_LEN] {
+pub(crate) fn rp_hash<S: Sha256Ctx>(rc: u32, ordinal: u32, params: &[u8]) -> [u8; SHA256_LEN] {
     let mut s = S::new();
     let rc_b = be32_arr(rc);
     let ord_b = be32_arr(ordinal);
@@ -60,7 +60,7 @@ pub fn rp_hash<S: Sha256Ctx>(rc: u32, ordinal: u32, params: &[u8]) -> [u8; SHA25
     s.finish()
 }
 /// `names` 是各授权句柄名字的顺序拼接，由会话层准备。
-pub fn cp_hash<S: Sha256Ctx>(ordinal: u32, names: &[u8], params: &[u8]) -> [u8; SHA256_LEN] {
+pub(crate) fn cp_hash<S: Sha256Ctx>(ordinal: u32, names: &[u8], params: &[u8]) -> [u8; SHA256_LEN] {
     let mut s = S::new();
     let ord_b = be32_arr(ordinal);
     s.update(&ord_b[..]);
@@ -73,7 +73,7 @@ pub fn cp_hash<S: Sha256Ctx>(ordinal: u32, names: &[u8], params: &[u8]) -> [u8; 
 /// 留空而不是填随机字节：占位内容参与不了任何校验，但会被写进最终报文。
 /// 万一后续的 [`patch_hmac`] 因错误路径没跑到，留下的应当是一望而知的全
 /// 零，而不是看起来像真 MAC 的东西。
-pub fn write_cmd_session(
+pub(crate) fn write_cmd_session(
     out: &mut [u8],
     off: usize,
     handle: u32,
@@ -103,7 +103,7 @@ pub fn write_cmd_session(
     }
 }
 /// 把算好的 MAC 填进占位处。
-pub fn patch_hmac(out: &mut [u8], off: usize, mac: &[u8; SHA256_LEN]) {
+pub(crate) fn patch_hmac(out: &mut [u8], off: usize, mac: &[u8; SHA256_LEN]) {
     let mut i: usize = 0;
     while i < SHA256_LEN {
         out[off + SESS_HMAC_OFF + i] = mac[i];
@@ -154,7 +154,7 @@ fn read_nonce(raw: &[u8], off: usize) -> [u8; NONCE_LEN] {
 ///   放行任意值，后面所有偏移就都由对端说了算。
 /// - **长度字段必须与实到字节数相等。** 少一字节意味着解析会读到不属于本
 ///   条响应的数据，多一字节意味着上层截断有误。
-pub fn parse_rsp_auth(raw: &[u8], rhandles: usize, index: usize) -> Result<RspAuth, AuthErr> {
+pub(crate) fn parse_rsp_auth(raw: &[u8], rhandles: usize, index: usize) -> Result<RspAuth, AuthErr> {
     if raw.len() < HEADER_LEN {
         return Err(AuthErr::Malformed);
     }
@@ -263,7 +263,7 @@ pub fn parse_rsp_auth(raw: &[u8], rhandles: usize, index: usize) -> Result<RspAu
 ///
 /// 提前返回会让比较耗时随首个不同字节的位置变化，等于把「猜对了几个字节」
 /// 告诉能计时的一方。MAC 比较必须是定时的。
-pub fn ct_eq32(a: &[u8; SHA256_LEN], b: &[u8]) -> bool {
+pub(crate) fn ct_eq32(a: &[u8; SHA256_LEN], b: &[u8]) -> bool {
     let mut acc: u8 = 0;
     let mut i: usize = 0;
     while i < SHA256_LEN {

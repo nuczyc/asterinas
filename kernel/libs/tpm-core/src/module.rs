@@ -97,7 +97,7 @@ impl Transaction {
 /// 释放表中所有活跃句柄与所有会话，并清空两张表。
 ///
 /// 这是错误路径的收尾动作：调用之后芯片上不再残留本 space 的任何东西。
-pub fn flush_all<I: ContextIo>(tbl: &mut SpaceTable, io: &mut I) {
+fn flush_all<I: ContextIo>(tbl: &mut SpaceTable, io: &mut I) {
     let mut i: usize = 0;
     while i < SLOTS {
         match tbl.slot_at(i) {

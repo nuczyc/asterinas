@@ -9,10 +9,10 @@ use crate::{
     },
 };
 
-pub const SHA1_DIGEST_LEN: usize = 20;
+pub(crate) const SHA1_DIGEST_LEN: usize = 20;
 /// 摘要长度 20、编号 4、能力查询三字段的最大形态,决定了任一命令所需的最小
 /// 缓冲区。调用方按它备缓冲区即可容纳本模块构造的任何一条命令。
-pub const CMD_MAX: usize = HEADER_LEN + 24;
+pub(crate) const CMD_MAX: usize = HEADER_LEN + 24;
 /// 写入 10 字节请求头,载荷区(偏移 10 之后)保持不动。
 fn put_header1(buf: &mut [u8], ordinal: u32, total: usize) {
     let hdr = build_header1(ordinal, total as u32);
@@ -46,14 +46,14 @@ fn put_bytes_at(buf: &mut [u8], off: usize, src: &[u8]) {
     }
 }
 /// 读一个 PCR。载荷是被读的 PCR 序号。
-pub fn build_pcr_read(buf: &mut [u8], pcr_idx: u32) -> usize {
+pub(crate) fn build_pcr_read(buf: &mut [u8], pcr_idx: u32) -> usize {
     let total = HEADER_LEN + 4;
     put_header1(buf, ORD_PCR_READ, total);
     put_be32_at(buf, HEADER_LEN, pcr_idx);
     total
 }
 /// 向一个 PCR 累加一段摘要。载荷是 PCR 序号加 20 字节摘要。
-pub fn build_pcr_extend(buf: &mut [u8], pcr_idx: u32, digest: &[u8]) -> usize {
+pub(crate) fn build_pcr_extend(buf: &mut [u8], pcr_idx: u32, digest: &[u8]) -> usize {
     let total = HEADER_LEN + 4 + SHA1_DIGEST_LEN;
     put_header1(buf, ORD_EXTEND, total);
     put_be32_at(buf, HEADER_LEN, pcr_idx);
@@ -61,7 +61,7 @@ pub fn build_pcr_extend(buf: &mut [u8], pcr_idx: u32, digest: &[u8]) -> usize {
     total
 }
 /// 取随机字节。载荷是希望取回的字节数;器件可少给,不会多给。
-pub fn build_get_random(buf: &mut [u8], num_bytes: u32) -> usize {
+pub(crate) fn build_get_random(buf: &mut [u8], num_bytes: u32) -> usize {
     let total = HEADER_LEN + 4;
     put_header1(buf, ORD_GET_RANDOM, total);
     put_be32_at(buf, HEADER_LEN, num_bytes);
@@ -71,7 +71,7 @@ pub fn build_get_random(buf: &mut [u8], num_bytes: u32) -> usize {
 ///
 /// 只支持「子项是一个 u32」这一形态——本驱动问到的每一项能力都落在这个形态里,
 /// 把子项字节数固定成 4 因此没有损失,也省掉了一个变长分支。
-pub fn build_getcap(buf: &mut [u8], cap: u32, subcap: u32) -> usize {
+pub(crate) fn build_getcap(buf: &mut [u8], cap: u32, subcap: u32) -> usize {
     let total = HEADER_LEN + 12;
     put_header1(buf, ORD_GET_CAPABILITY, total);
     put_be32_at(buf, HEADER_LEN, cap);
@@ -80,20 +80,20 @@ pub fn build_getcap(buf: &mut [u8], cap: u32, subcap: u32) -> usize {
     total
 }
 /// 触发一次增量自检:只测尚未测过的部分。这条命令无载荷。
-pub fn build_continue_selftest(buf: &mut [u8]) -> usize {
+pub(crate) fn build_continue_selftest(buf: &mut [u8]) -> usize {
     let total = HEADER_LEN;
     put_header1(buf, ORD_CONTINUE_SELF_TEST, total);
     total
 }
 /// 保存易失状态,为休眠做准备。这条命令无载荷。
-pub fn build_save_state(buf: &mut [u8]) -> usize {
+pub(crate) fn build_save_state(buf: &mut [u8]) -> usize {
     let total = HEADER_LEN;
     put_header1(buf, ORD_SAVE_STATE, total);
     total
 }
 /// 宣告启动方式。载荷是启动类型。固件通常已经启动过器件,这条命令是模拟器等
 /// 场景下的兜底。
-pub fn build_startup(buf: &mut [u8], startup_type: u16) -> usize {
+pub(crate) fn build_startup(buf: &mut [u8], startup_type: u16) -> usize {
     let total = HEADER_LEN + 2;
     put_header1(buf, ORD_STARTUP, total);
     put_be16_at(buf, HEADER_LEN, startup_type);

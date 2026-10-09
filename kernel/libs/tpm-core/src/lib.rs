@@ -2,13 +2,13 @@
 
 extern crate alloc;
 
-pub mod buf;
+mod buf;
 pub mod chip;
 pub mod cmd;
-pub mod compat;
+mod compat;
 pub mod cursor;
-pub mod endian;
-pub mod handle;
+mod endian;
+mod handle;
 pub mod module;
 pub mod msg;
 pub mod probe;
@@ -27,27 +27,27 @@ pub mod session;
 pub mod mmio;
 pub mod phy;
 pub mod tis;
-pub mod tis_core;
+mod tis_core;
 
 pub mod crb;
-pub mod crb_core;
-pub mod crb_phy;
+mod crb_core;
+mod crb_phy;
 
 pub use crb::{CrbErr, MAX_LOCALITY as CRB_MAX_LOCALITY};
 pub use crb_core::Crb;
 pub use crb_phy::CrbPhy;
 // 编排层：长度校验、重传、返回码提取 -> 幽灵账本与链路接合
-pub mod link;
+mod link;
 pub mod xfer;
 
 // 授权往返：把「响应必须先过 MAC 校验」变成类型层面的事实
-pub mod secure;
+mod secure;
 
 // 引导序列：宿主接口自检 -> 启动 -> 自检 -> 容量对账
-pub mod boot;
+mod boot;
 
 // 阶段移交：链路在无会话路径与授权路径之间易手，账本一路随行
-pub mod handoff;
+mod handoff;
 
 pub use auth::{AuthErr, RspAuth, SA_CONTINUE_SESSION, SA_DECRYPT, SA_ENCRYPT};
 pub use boot::{Boot, BootErr, Limits, bring_up};

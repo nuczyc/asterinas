@@ -9,10 +9,10 @@ pub const RC_SUCCESS: u32 = 0;
 pub const CAP_HANDLES: u32 = 0x0000_0001;
 /// 能力响应体布局：更多数据标志 1 字节，类目 4 字节，数量 4 字节。
 pub const CAP_MORE_OFF: usize = HEADER_SIZE;
-pub const CAP_CAPABILITY_OFF: usize = HEADER_SIZE + 1;
-pub const CAP_COUNT_OFF: usize = HEADER_SIZE + 5;
-pub const CAP_HANDLES_OFF: usize = HEADER_SIZE + 9;
-pub const RSP_LENGTH_OFF: usize = 2;
+const CAP_CAPABILITY_OFF: usize = HEADER_SIZE + 1;
+const CAP_COUNT_OFF: usize = HEADER_SIZE + 5;
+const CAP_HANDLES_OFF: usize = HEADER_SIZE + 9;
+const RSP_LENGTH_OFF: usize = 2;
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SpaceErr {
     /// 报文长度与其自身声明的结构不符。
@@ -26,7 +26,7 @@ pub fn read_be32(b: &[u8], off: usize) -> u32 {
         | ((b[off + 2] as u32) << 8)
         | (b[off + 3] as u32)
 }
-pub fn write_be32(b: &mut [u8], off: usize, v: u32) {
+fn write_be32(b: &mut [u8], off: usize, v: u32) {
     b[off] = ((v >> 24) & 0xff) as u8;
     b[off + 1] = ((v >> 16) & 0xff) as u8;
     b[off + 2] = ((v >> 8) & 0xff) as u8;

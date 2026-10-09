@@ -21,22 +21,22 @@ pub const RC_RETRY: u32 = 0x0000_0922;
 /// 策略触发而非资源短缺，重发一次通常就能过。
 pub const RC_YIELDED: u32 = 0x0000_0908;
 /// 首次退避的时长（毫秒）。
-pub const RETRY_FIRST_MS: u32 = 20;
+const RETRY_FIRST_MS: u32 = 20;
 /// 单次退避的时长上限（毫秒）。
-pub const RETRY_CAP_MS: u32 = 2000;
+const RETRY_CAP_MS: u32 = 2000;
 /// 重传次数上限。取到这个数之后仍是可重试返回码，就把它原样交给调用方——
 /// 本层不把「等了很久还是忙」翻译成错误，那是调用方该拿的判断。
-pub const RETRY_MAX: u32 = 8;
-pub const DURATION_SHORT_MS: u32 = 750;
-pub const DURATION_MEDIUM_MS: u32 = 2000;
-pub const DURATION_LONG_MS: u32 = 30000;
+const RETRY_MAX: u32 = 8;
+const DURATION_SHORT_MS: u32 = 750;
+const DURATION_MEDIUM_MS: u32 = 2000;
+const DURATION_LONG_MS: u32 = 30000;
 /// 未列出命令的默认上界。取得很大是有意的：一条本层不认识的命令，本层也就
 /// 没有依据说它该多快。
-pub const DURATION_DEFAULT_MS: u32 = 120000;
+const DURATION_DEFAULT_MS: u32 = 120000;
 /// 命令码 → 执行时长上界（毫秒）。
 ///
 /// 返回值恒为正，因此 [`budget_of`] 折算出的轮询预算恒不为零。
-pub fn duration_ms(cc: u32) -> u32 {
+fn duration_ms(cc: u32) -> u32 {
     if cc == CC_STARTUP
         || cc == CC_SHUTDOWN
         || cc == CC_PCR_READ
@@ -71,10 +71,10 @@ pub enum XferErr {
 /// 报文头由命令层生成（规约用乘加形式），句柄区由重写层读取（规约用移位或
 /// 形式），本层横跨两者，读一次就把两种形式都摆出来，免得每个调用点各自
 /// 引一遍桥引理。
-pub fn peek_be32(b: &[u8], off: usize) -> u32 {
+pub(crate) fn peek_be32(b: &[u8], off: usize) -> u32 {
     read_be32(b, off)
 }
-pub fn cmd_wf(cmd: &[u8], len: usize) -> bool {
+fn cmd_wf(cmd: &[u8], len: usize) -> bool {
     if len < TPM_HEADER_LEN {
         return false;
     }

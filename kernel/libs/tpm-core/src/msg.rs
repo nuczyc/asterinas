@@ -1,8 +1,8 @@
 use crate::cursor::*;
 
-pub const TPM_HEADER_LEN: usize = 10;
+pub(crate) const TPM_HEADER_LEN: usize = 10;
 /// 无会话响应标签。
-pub const ST_NO_SESSIONS: u16 = 0x8001;
+pub(crate) const ST_NO_SESSIONS: u16 = 0x8001;
 /// 带会话（授权区）响应标签。
 pub const ST_SESSIONS: u16 = 0x8002;
 /// 成功返回码。
@@ -42,7 +42,7 @@ impl<'a> Response<'a> {
 /// 拒绝三类输入：长度不足一个头部、`size` 字段与实到字节数不符、
 /// 标签不是两个合法响应标签之一。返回码非零时不再往下解析载荷——
 /// 失败响应的载荷内容按规范是未定义的。
-pub fn parse_response(raw: &[u8]) -> Result<Response<'_>, ParseError> {
+pub(crate) fn parse_response(raw: &[u8]) -> Result<Response<'_>, ParseError> {
     if raw.len() < TPM_HEADER_LEN {
         return Err(ParseError::Truncated);
     }
@@ -75,7 +75,7 @@ pub fn parse_response(raw: &[u8]) -> Result<Response<'_>, ParseError> {
 ///
 /// `size` 需要在载荷长度确定后回填，因此这里只提供"给定总长度生成
 /// 头部"的纯函数，由缓冲区层在收尾时调用。
-pub fn build_header(tag: u16, code: u32, total_size: u32) -> [u8; 10] {
+pub(crate) fn build_header(tag: u16, code: u32, total_size: u32) -> [u8; 10] {
     let t = be16_bytes(tag);
     let s = be32_bytes(total_size);
     let c = be32_bytes(code);

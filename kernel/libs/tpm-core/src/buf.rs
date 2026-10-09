@@ -18,7 +18,7 @@ pub const TPM_HEADER_SIZE: usize = 10;
 pub const TPM2B_HEADER_SIZE: usize = 2;
 /// 内核胶水层应把它重新实现为页分配并 **Box 化**，避免 4 KiB 落在内核栈上；
 /// 这里的默认实现只用于 host 侧差分测试。
-pub fn alloc_zeroed_storage<const N: usize>() -> [u8; N] {
+fn alloc_zeroed_storage<const N: usize>() -> [u8; N] {
     [0u8; N]
 }
 /// 它与 `overflow`/`boundary_error` 的区别在于：种类在构造时确定、此后不变，
