@@ -44,13 +44,10 @@ pub enum SecErr {
     Auth(AuthErr),
 }
 pub struct Guarded<P: TisPhy> {
-    pub x: Xfer<P>,
-    pub sess: AuthSession,
-    /// 响应暂存区。**私有**——本层的全部保证都建立在模块之外拿不到它之上。
+    x: Xfer<P>,
+    sess: AuthSession,
+    /// 响应暂存区。本层的全部保证都建立在模块之外拿不到它之上。
     rbuf: [u8; MSG_MAX],
-    /// 暂存区里有效字节数。公开无妨：长度不是能力，而改动它只会让
-    /// [`Guarded::params`] 的前置条件证不出来。
-    pub rlen: usize,
 }
 impl<P: TisPhy> Guarded<P> {
     pub fn new(x: Xfer<P>, sess: AuthSession) -> Self {
@@ -58,7 +55,6 @@ impl<P: TisPhy> Guarded<P> {
             x,
             sess,
             rbuf: [0u8; MSG_MAX],
-            rlen: 0,
         }
     }
     /// 发一条带授权的命令，只有 MAC 对上才返回。
@@ -104,7 +100,6 @@ impl<P: TisPhy> Guarded<P> {
                 return Err(SecErr::Bus(e));
             }
         };
-        self.rlen = n;
         let raw = &self.rbuf[0..n];
         let a = match self.sess.check_response::<S, H>(raw, lay.rhandles) {
             Ok(a) => a,
