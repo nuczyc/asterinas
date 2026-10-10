@@ -98,27 +98,18 @@ impl Transaction {
 ///
 /// 这是错误路径的收尾动作：调用之后芯片上不再残留本 space 的任何东西。
 fn flush_all<I: ContextIo>(tbl: &mut SpaceTable, io: &mut I) {
-    let mut i: usize = 0;
-    while i < SLOTS {
-        match tbl.slot_at(i) {
-            CtxSlot::Live(h) => {
-                io.flush(h);
-                tbl.set_slot_free(i, false);
-            }
-            _ => {
-                tbl.set_slot_free(i, false);
-            }
+    for i in 0..SLOTS {
+        if let CtxSlot::Live(h) = tbl.slot_at(i) {
+            io.flush(h);
         }
-        i += 1;
+        tbl.set_slot_free(i, false);
     }
-    let mut i: usize = 0;
-    while i < SLOTS {
+    for i in 0..SLOTS {
         let h = tbl.session_at(i);
         if h != 0 {
             io.flush(h);
             tbl.clear_session(i);
         }
-        i += 1;
     }
 }
 /// 把备份缓冲区里的上下文全部装载回芯片。
@@ -134,9 +125,8 @@ pub fn load_space<I: ContextIo>(
     ctx_buf: &[u8],
     ses_buf: &[u8],
 ) -> Result<(), IoErr> {
-    let mut i: usize = 0;
     let mut off: usize = 0;
-    while i < SLOTS {
+    for i in 0..SLOTS {
         match tbl.slot_at(i) {
             CtxSlot::Empty => {}
             CtxSlot::Live(_) => {
@@ -154,11 +144,9 @@ pub fn load_space<I: ContextIo>(
                 }
             },
         }
-        i += 1;
     }
-    let mut i: usize = 0;
     let mut off: usize = 0;
-    while i < SLOTS {
+    for i in 0..SLOTS {
         if tbl.session_at(i) != 0 {
             match io.load(ses_buf, off) {
                 Ok((h, used)) => {
@@ -177,7 +165,6 @@ pub fn load_space<I: ContextIo>(
                 }
             }
         }
-        i += 1;
     }
     Ok(())
 }
@@ -191,9 +178,8 @@ pub fn save_space<I: ContextIo>(
     ctx_buf: &mut [u8],
     ses_buf: &mut [u8],
 ) -> Result<(), IoErr> {
-    let mut i: usize = 0;
     let mut off: usize = 0;
-    while i < SLOTS {
+    for i in 0..SLOTS {
         if let CtxSlot::Live(h) = tbl.slot_at(i) {
             match io.save(h, ctx_buf, off) {
                 Ok(used) => {
@@ -210,11 +196,9 @@ pub fn save_space<I: ContextIo>(
                 }
             }
         }
-        i += 1;
     }
-    let mut i: usize = 0;
     let mut off: usize = 0;
-    while i < SLOTS {
+    for i in 0..SLOTS {
         let h = tbl.session_at(i);
         if h != 0 {
             match io.save(h, ses_buf, off) {
@@ -230,7 +214,6 @@ pub fn save_space<I: ContextIo>(
                 }
             }
         }
-        i += 1;
     }
     Ok(())
 }

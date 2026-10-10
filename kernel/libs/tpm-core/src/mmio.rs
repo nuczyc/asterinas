@@ -31,18 +31,14 @@ impl<B: TisMmioBackend> TisPhy for TisMmio<B> {
         self.backend.write32(addr, value.to_le())
     }
     fn read_fifo(&mut self, addr: u32, out: &mut [u8], off: usize, n: usize) -> Result<(), TisErr> {
-        let mut i = 0usize;
-        while i < n {
-            out[off + i] = self.backend.read8(addr)?;
-            i += 1;
+        for slot in &mut out[off..off + n] {
+            *slot = self.backend.read8(addr)?;
         }
         Ok(())
     }
     fn write_fifo(&mut self, addr: u32, data: &[u8], off: usize, n: usize) -> Result<(), TisErr> {
-        let mut i = 0usize;
-        while i < n {
-            self.backend.write8(addr, data[off + i])?;
-            i += 1;
+        for &byte in &data[off..off + n] {
+            self.backend.write8(addr, byte)?;
         }
         Ok(())
     }

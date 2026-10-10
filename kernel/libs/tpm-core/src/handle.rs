@@ -12,7 +12,6 @@ pub(crate) fn vhandle_of_exec(i: usize) -> u32 {
 }
 /// 反解槽位号。返回 `usize`，越界由调用方用 `< SLOTS` 判断。
 pub(crate) fn slot_of_exec(v: u32) -> usize {
-    {};
     (0xFF_FFFFu32 - (v & 0xFF_FFFFu32)) as usize
 }
 pub fn is_transient_exec(h: u32) -> bool {

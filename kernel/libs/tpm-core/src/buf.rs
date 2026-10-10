@@ -119,12 +119,7 @@ impl<const N: usize> TpmBuf<N> {
             return;
         }
         let start: usize = self.length;
-        let mut i: usize = 0;
-        while i < src.len() {
-            let b: u8 = src[i];
-            self.data[start + i] = b;
-            i += 1;
-        }
+        self.data[start..start + src.len()].copy_from_slice(src);
         self.length = start + src.len();
         self.sync_length();
     }

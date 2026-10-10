@@ -102,13 +102,5 @@ impl Cursor {
 ///
 /// PCR 分配解析要靠它判断某个 bank 是否真的被分配（选择位图全零即未分配）。
 pub(crate) fn any_nonzero(s: &[u8]) -> bool {
-    let n = s.len();
-    let mut i: usize = 0;
-    while i < n {
-        if s[i] != 0 {
-            return true;
-        }
-        i += 1;
-    }
-    false
+    s.iter().any(|&b| b != 0)
 }

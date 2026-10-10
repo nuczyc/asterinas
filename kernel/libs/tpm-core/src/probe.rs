@@ -35,11 +35,7 @@ pub fn probe_family<P: TisPhy>(x: &mut Xfer<P>) -> Family {
     let b = be32_bytes(PT_TOTAL_COMMANDS);
     let c = be32_bytes(1);
     let mut cmd = [0u8; PROBE_LEN];
-    let mut i = 0;
-    while i < TPM_HEADER_LEN {
-        cmd[i] = hdr[i];
-        i += 1;
-    }
+    cmd[..TPM_HEADER_LEN].copy_from_slice(&hdr);
     cmd[TPM_HEADER_LEN] = a[0];
     cmd[TPM_HEADER_LEN + 1] = a[1];
     cmd[TPM_HEADER_LEN + 2] = a[2];

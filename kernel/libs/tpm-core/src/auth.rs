@@ -1,6 +1,5 @@
 use crate::{crypto::*, cursor::Cursor};
 
-const _: () = ();
 /// 标签 2 字节 + 长度 4 字节 + 命令码或返回码 4 字节。
 pub const HEADER_LEN: usize = 10;
 /// 带授权区的报文标签。授权区只在这个标签下存在。
@@ -88,27 +87,18 @@ pub(crate) fn write_cmd_session(
     out[off + SESS_HANDLE_OFF + 3] = h[3];
     out[off + SESS_NONCE_SIZE_OFF] = n[0];
     out[off + SESS_NONCE_SIZE_OFF + 1] = n[1];
-    let mut i: usize = 0;
-    while i < NONCE_LEN {
-        out[off + SESS_NONCE_OFF + i] = nonce[i];
-        i += 1;
-    }
+    let nonce_start = off + SESS_NONCE_OFF;
+    out[nonce_start..nonce_start + NONCE_LEN].copy_from_slice(nonce);
     out[off + SESS_ATTRS_OFF] = attrs;
     out[off + SESS_HMAC_SIZE_OFF] = n[0];
     out[off + SESS_HMAC_SIZE_OFF + 1] = n[1];
-    let mut j: usize = 0;
-    while j < NONCE_LEN {
-        out[off + SESS_HMAC_OFF + j] = 0;
-        j += 1;
-    }
+    let hmac_start = off + SESS_HMAC_OFF;
+    out[hmac_start..hmac_start + NONCE_LEN].fill(0);
 }
 /// 把算好的 MAC 填进占位处。
 pub(crate) fn patch_hmac(out: &mut [u8], off: usize, mac: &[u8; SHA256_LEN]) {
-    let mut i: usize = 0;
-    while i < SHA256_LEN {
-        out[off + SESS_HMAC_OFF + i] = mac[i];
-        i += 1;
-    }
+    let start = off + SESS_HMAC_OFF;
+    out[start..start + SHA256_LEN].copy_from_slice(mac);
 }
 /// 一条响应里与本会话有关的位置信息。
 ///
@@ -132,12 +122,8 @@ pub struct RspAuth {
 impl RspAuth {}
 /// 取出偏移 `off` 起的一段 nonce。
 fn read_nonce(raw: &[u8], off: usize) -> [u8; NONCE_LEN] {
-    let mut out: [u8; NONCE_LEN] = [0u8; NONCE_LEN];
-    let mut i: usize = 0;
-    while i < NONCE_LEN {
-        out[i] = raw[off + i];
-        i += 1;
-    }
+    let mut out = [0u8; NONCE_LEN];
+    out.copy_from_slice(&raw[off..off + NONCE_LEN]);
     out
 }
 /// 在响应里定位第 `index` 个会话（从零计数）。
@@ -191,8 +177,7 @@ pub(crate) fn parse_rsp_auth(raw: &[u8], rhandles: usize, index: usize) -> Resul
     if !c.skip(raw, param_len) {
         return Err(AuthErr::Malformed);
     }
-    let mut i: usize = 0;
-    while i < index {
+    for _ in 0..index {
         let nl = match c.read_be16(raw) {
             Some(v) => v,
             None => return Err(AuthErr::Malformed),
@@ -210,7 +195,6 @@ pub(crate) fn parse_rsp_auth(raw: &[u8], rhandles: usize, index: usize) -> Resul
         if !c.skip(raw, hl as usize) {
             return Err(AuthErr::Malformed);
         }
-        i += 1;
     }
     let nonce_len = match c.read_be16(raw) {
         Some(v) => v,
@@ -265,10 +249,8 @@ pub(crate) fn parse_rsp_auth(raw: &[u8], rhandles: usize, index: usize) -> Resul
 /// 告诉能计时的一方。MAC 比较必须是定时的。
 pub(crate) fn ct_eq32(a: &[u8; SHA256_LEN], b: &[u8]) -> bool {
     let mut acc: u8 = 0;
-    let mut i: usize = 0;
-    while i < SHA256_LEN {
+    for i in 0..SHA256_LEN {
         acc |= a[i] ^ b[i];
-        i += 1;
     }
     acc == 0
 }

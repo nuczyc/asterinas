@@ -83,11 +83,7 @@ impl<P: TisPhy> Boot<P> {
     /// 字节数走散的唯一入口。
     fn put_header(&mut self, cc: u32, total: usize) {
         let hdr = build_header(ST_NO_SESSIONS, cc, total as u32);
-        let mut k: usize = 0;
-        while k < TPM_HEADER_LEN {
-            self.cbuf[k] = hdr[k];
-            k += 1;
-        }
+        self.cbuf[..TPM_HEADER_LEN].copy_from_slice(&hdr);
     }
     /// 写一个字节的载荷。
     fn put_u8(&mut self, off: usize, v: u8) {

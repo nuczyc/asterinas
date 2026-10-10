@@ -123,8 +123,7 @@ pub fn parse_pcr_allocation(body: &[u8]) -> Result<PcrBanks, ParseError> {
         return Err(ParseError::Capacity);
     }
     let mut banks = PcrBanks::empty();
-    let mut i: u32 = 0;
-    while i < count {
+    for _ in 0..count {
         let alg_id = match c.read_be16(body) {
             Some(v) => v,
             None => return Err(ParseError::Truncated),
@@ -145,7 +144,6 @@ pub fn parse_pcr_allocation(body: &[u8]) -> Result<PcrBanks, ParseError> {
             banks.digest_sizes[banks.count] = digest_size_of(alg_id);
             banks.count += 1;
         }
-        i += 1;
     }
     Ok(banks)
 }

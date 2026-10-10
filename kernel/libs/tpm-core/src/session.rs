@@ -1,6 +1,5 @@
 use crate::{auth::*, crypto::*};
 
-const _: () = ();
 /// 会话生命周期。
 ///
 /// `Pending` 用元组变体而非具名字段：带花括号的结构体字面量在 `ensures`
@@ -39,18 +38,11 @@ pub struct AuthSession {
 impl AuthSession {
     /// 把会话密钥与口令拼进一块定长缓冲区，返回有效长度。
     fn key_buf(&self) -> ([u8; KEY_MATERIAL_MAX], usize) {
-        let mut buf: [u8; KEY_MATERIAL_MAX] = [0u8; KEY_MATERIAL_MAX];
-        let mut i: usize = 0;
-        while i < SHA256_LEN {
-            buf[i] = self.session_key[i];
-            i += 1;
-        }
-        let mut j: usize = 0;
-        while j < self.passphrase_len {
-            buf[SHA256_LEN + j] = self.passphrase[j];
-            j += 1;
-        }
-        (buf, SHA256_LEN + self.passphrase_len)
+        let mut buf = [0u8; KEY_MATERIAL_MAX];
+        let plen = self.passphrase_len;
+        buf[..SHA256_LEN].copy_from_slice(&self.session_key);
+        buf[SHA256_LEN..SHA256_LEN + plen].copy_from_slice(&self.passphrase[..plen]);
+        (buf, SHA256_LEN + plen)
     }
     /// 由协商出的共享秘密与双方 nonce 导出会话密钥。
     ///
@@ -61,7 +53,6 @@ impl AuthSession {
         salt: &[u8],
         our_nonce: [u8; NONCE_LEN],
         tpm_nonce: [u8; NONCE_LEN],
-        /* gen removed (ghost) */
     ) -> AuthSession {
         let key = kdfa32::<H>(salt, &LABEL_ATH[..], &tpm_nonce[..], &our_nonce[..]);
         AuthSession {
@@ -74,7 +65,6 @@ impl AuthSession {
             attrs: 0,
             ordinal: 0,
             state: SessionState::Idle,
-            /* nonce_gen removed (ghost) */
         }
     }
     /// 设置本轮口令。尾部零字节按规范先行剥除。
@@ -86,11 +76,7 @@ impl AuthSession {
         while n > 0 && pw[n - 1] == 0 {
             n -= 1;
         }
-        let mut i: usize = 0;
-        while i < n {
-            self.passphrase[i] = pw[i];
-            i += 1;
-        }
+        self.passphrase[..n].copy_from_slice(&pw[..n]);
         self.passphrase_len = n;
     }
     /// 为下一条命令换一枚新 nonce。
@@ -104,7 +90,6 @@ impl AuthSession {
     /// 点会离真正的原因很远。
     pub fn begin<R: NonceSource>(&mut self, rng: &mut R, ordinal: u32, attrs: u8) {
         self.our_nonce = rng.nonce();
-        /* nonce_gen assignment removed (ghost) */
         self.ordinal = ordinal;
         self.attrs = attrs | SA_CONTINUE_SESSION;
     }

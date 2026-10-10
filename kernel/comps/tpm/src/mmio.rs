@@ -50,34 +50,23 @@ impl TisPhy for TisMmio {
             .map_err(|_| TisErr::Phy)
     }
     fn read_fifo(&mut self, addr: u32, out: &mut [u8], off: usize, n: usize) -> Result<(), TisErr> {
-        let mut i = 0usize;
-        while i < n {
-            match self.mmio.read_once::<u8>(addr as usize) {
-                Ok(b) => {
-                    out[off + i] = b;
-                }
-                Err(_) => return Err(TisErr::Phy),
-            }
-            i += 1;
+        // Each read of the data-FIFO register consumes one byte, so the same
+        // address is read `n` times.
+        for slot in &mut out[off..off + n] {
+            *slot = self
+                .mmio
+                .read_once::<u8>(addr as usize)
+                .map_err(|_| TisErr::Phy)?;
         }
         Ok(())
     }
     fn write_fifo(&mut self, addr: u32, data: &[u8], off: usize, n: usize) -> Result<(), TisErr> {
-        let mut i = 0usize;
-        let mut failed = false;
-        while i < n {
-            match self.mmio.write_once::<u8>(addr as usize, &data[off + i]) {
-                Ok(()) => {
-                    i += 1;
-                }
-                Err(_) => {
-                    failed = true;
-                    break;
-                }
-            }
+        for byte in &data[off..off + n] {
+            self.mmio
+                .write_once::<u8>(addr as usize, byte)
+                .map_err(|_| TisErr::Phy)?;
         }
-        {}
-        if failed { Err(TisErr::Phy) } else { Ok(()) }
+        Ok(())
     }
     /// 写入命令就绪位(0x40)并把累积量清零。
     ///
@@ -86,7 +75,6 @@ impl TisPhy for TisMmio {
     /// 无从补救,故忽略返回值——这与 trait 上 `reset_fifo` 无返回值的设计一致。
     fn reset_fifo(&mut self, addr: u32) {
         let _ = self.mmio.write_once::<u8>(addr as usize, &0x40u8);
-        {}
     }
     /// Back off approximately 1 ms between TIS status polls.
     ///

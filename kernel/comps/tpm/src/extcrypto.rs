@@ -44,7 +44,6 @@ impl Sha256Ctx for ExtSha256 {
     fn update(&mut self, data: &[u8]) {
         use sha2::Digest;
         self.st.inner.update(data);
-        {}
     }
     fn finish(self) -> [u8; SHA256_LEN] {
         use sha2::Digest;
@@ -72,7 +71,6 @@ impl HmacSha256Ctx for ExtHmacSha256 {
     fn update(&mut self, data: &[u8]) {
         use hmac::Mac;
         self.st.inner.update(data);
-        {}
     }
     fn finish(self) -> [u8; SHA256_LEN] {
         use hmac::Mac;
@@ -189,7 +187,6 @@ impl NonceSource for ExtRng {
                 }
             }
         }
-        {}
         out
     }
 }

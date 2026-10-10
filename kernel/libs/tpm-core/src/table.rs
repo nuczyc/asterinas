@@ -71,51 +71,32 @@ impl SpaceTable {
     }
     /// 物理句柄 → 虚拟句柄，仅查询，不分配。
     pub fn lookup(&self, p: u32) -> Option<u32> {
-        let mut i: usize = 0;
-        while i < SLOTS {
-            if self.ctx[i] == CtxSlot::Live(p) {
-                return Some(vhandle_of_exec(i));
-            }
-            i += 1;
-        }
-        None
+        self.ctx
+            .iter()
+            .position(|&slot| slot == CtxSlot::Live(p))
+            .map(vhandle_of_exec)
     }
     /// 为物理句柄分配一个空闲槽位，返回对应虚拟句柄。
     ///
     /// 表满时返回 `None`；此时调用方**有义务**把这个物理句柄在芯片上释放，
     /// 否则它会一直占着芯片资源且再也无法被引用。
     pub fn intern(&mut self, p: u32) -> Option<u32> {
-        let mut i: usize = 0;
-        while i < SLOTS {
-            if self.ctx[i] == CtxSlot::Empty {
-                self.set_slot_live(i, p);
-                return Some(vhandle_of_exec(i));
-            }
-            i += 1;
-        }
-        None
+        let i = self.ctx.iter().position(|&slot| slot == CtxSlot::Empty)?;
+        self.set_slot_live(i, p);
+        Some(vhandle_of_exec(i))
     }
     /// 登记一个会话句柄。表满时返回 `false`，调用方同样负有释放义务。
     pub fn add_session(&mut self, h: u32) -> bool {
-        let mut i: usize = 0;
-        while i < SLOTS {
-            if self.sessions[i] == 0 {
-                self.sessions[i] = h;
-                return true;
+        match self.sessions.iter_mut().find(|slot| **slot == 0) {
+            Some(slot) => {
+                *slot = h;
+                true
             }
-            i += 1;
+            None => false,
         }
-        false
     }
     pub fn has_session_exec(&self, h: u32) -> bool {
-        let mut i: usize = 0;
-        while i < SLOTS {
-            if self.sessions[i] == h {
-                return true;
-            }
-            i += 1;
-        }
-        false
+        self.sessions.contains(&h)
     }
     pub fn session_at(&self, i: usize) -> u32 {
         self.sessions[i]

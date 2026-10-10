@@ -41,23 +41,18 @@ pub fn map_command_handles(
     nr_handles: usize,
     cmd: &mut [u8],
 ) -> Result<(), SpaceErr> {
-    let mut i: usize = 0;
-    while i < nr_handles {
+    for i in 0..nr_handles {
         let h = read_be32(cmd, HEADER_SIZE + 4 * i);
         if is_transient_exec(h) && tbl.resolve(h).is_none() {
             return Err(SpaceErr::BadHandle);
         }
-        i += 1;
     }
-    let mut i: usize = 0;
-    while i < nr_handles {
+    for i in 0..nr_handles {
         let h = read_be32(cmd, HEADER_SIZE + 4 * i);
         if is_transient_exec(h) {
-            let rh = tbl.resolve(h);
-            let p = rh.unwrap();
+            let p = tbl.resolve(h).unwrap();
             write_be32(cmd, HEADER_SIZE + 4 * i, p);
         }
-        i += 1;
     }
     Ok(())
 }
@@ -152,9 +147,8 @@ pub fn map_capability_handles(
         return Err(SpaceErr::Malformed);
     }
     let count: usize = avail;
-    let mut i: usize = 0;
     let mut j: usize = 0;
-    while i < count {
+    for i in 0..count {
         let h = read_be32(rsp, CAP_HANDLES_OFF + 4 * i);
         if is_transient_exec(h) {
             if h != 0
@@ -168,7 +162,6 @@ pub fn map_capability_handles(
             write_be32(rsp, CAP_HANDLES_OFF + 4 * j, h);
             j += 1;
         }
-        i += 1;
     }
     let new_len = CAP_HANDLES_OFF + 4 * j;
     write_be32(rsp, CAP_COUNT_OFF, j as u32);

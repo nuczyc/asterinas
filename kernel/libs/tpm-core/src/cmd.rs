@@ -125,11 +125,7 @@ pub fn pcr_extend_payload(alg_id: u16, digest: &[u8; SHA256_LEN]) -> [u8; PCR_EX
     out[3] = cnt[3];
     out[4] = alg[0];
     out[5] = alg[1];
-    let mut i: usize = 0;
-    while i < SHA256_LEN {
-        out[6 + i] = digest[i];
-        i += 1;
-    }
+    out[6..6 + SHA256_LEN].copy_from_slice(digest);
     out
 }
 /// `TPM2_GetCapability` 载荷（Part 3 §30.2）。

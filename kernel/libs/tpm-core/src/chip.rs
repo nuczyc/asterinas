@@ -118,12 +118,7 @@ impl<T: ChipTransport> CtxIo<T> {
     /// 那一刻，而不必在中途重新为它找依据。
     fn put_header(&mut self, code: u32, total: usize) {
         let hdr = build_header(ST_NO_SESSIONS, code, total as u32);
-        let mut k: usize = 0;
-        while k < HEADER_SIZE {
-            self.cbuf[k] = hdr[k];
-            k += 1;
-        }
-        {}
+        self.cbuf[..HEADER_SIZE].copy_from_slice(&hdr);
     }
     /// 把整条命令原样交给底层传输，不做报文组装。
     ///
@@ -156,12 +151,7 @@ impl<T: ChipTransport> ContextIo for CtxIo<T> {
             return Err(IoErr::NoSpace);
         }
         self.put_header(CC_CONTEXT_LOAD, HEADER_SIZE + used);
-        let mut k: usize = 0;
-        while k < used {
-            self.cbuf[HEADER_SIZE + k] = blob[off + k];
-            k += 1;
-        }
-        {}
+        self.cbuf[HEADER_SIZE..HEADER_SIZE + used].copy_from_slice(&blob[off..off + used]);
         let n = match self.tx.exec(&self.cbuf, &mut self.rbuf) {
             Ok(n) => n,
             Err(e) => {
@@ -184,7 +174,6 @@ impl<T: ChipTransport> ContextIo for CtxIo<T> {
     fn save(&mut self, h: u32, out: &mut [u8], off: usize) -> Result<usize, IoErr> {
         self.put_header(CC_CONTEXT_SAVE, HEADER_SIZE + 4);
         write_be32_arr(&mut self.cbuf, HEADER_SIZE, h);
-        {}
         let n = match self.tx.exec(&self.cbuf, &mut self.rbuf) {
             Ok(n) => n,
             Err(e) => {
@@ -205,25 +194,18 @@ impl<T: ChipTransport> ContextIo for CtxIo<T> {
         if off > out.len() || out.len() - off < body {
             return Err(IoErr::NoSpace);
         }
-        let mut k: usize = 0;
-        while k < body {
-            out[off + k] = self.rbuf[HEADER_SIZE + k];
-            k += 1;
-        }
-        {};
+        out[off..off + body].copy_from_slice(&self.rbuf[HEADER_SIZE..HEADER_SIZE + body]);
         Ok(body)
     }
     fn flush(&mut self, h: u32) {
         self.put_header(CC_FLUSH_CONTEXT, HEADER_SIZE + 4);
         write_be32_arr(&mut self.cbuf, HEADER_SIZE, h);
-        {}
         let _ = self.tx.exec(&self.cbuf, &mut self.rbuf);
     }
 }
 /// [`write_be32`] 的定长数组版本。切片版要求 `&mut [u8]`，而这里操作的是
 /// 结构体里的数组字段，重借用会让 Verus 多出一层义务，直接写更省事。
 fn write_be32_arr(b: &mut [u8; MSG_MAX], off: usize, v: u32) {
-    {}
     b[off] = ((v >> 24) & 0xff) as u8;
     b[off + 1] = ((v >> 16) & 0xff) as u8;
     b[off + 2] = ((v >> 8) & 0xff) as u8;
