@@ -184,20 +184,37 @@ impl<P: TisPhy> Tis<P> {
     /// 部可能失败的动作收进一个内部函数，让归还成为无条件的收尾语句——于是
     /// 「任何路径退出时 locality 均被释放」不需要逐条路径去查，它是控制流的形
     /// 状直接给出的。这也是本层唯一一处刻意为了可证性而调整的结构。
-    pub fn transmit(&mut self, cmd: &[u8], len: usize, out: &mut [u8]) -> Result<usize, TisErr> {
+    ///
+    /// `exec_budget` 是等待 `STS_DATA_AVAIL` 的轮询次数上界，由调用方按命令码
+    /// 计算后传入（见 [`crate::xfer::poll_budget`]）。不同命令的执行时长差异
+    /// 可达两个数量级，只有在这里用按命令定制的预算才能同时满足「快命令快超时」
+    /// 和「慢命令不误报超时」两条要求。
+    pub fn transmit(
+        &mut self,
+        cmd: &[u8],
+        len: usize,
+        out: &mut [u8],
+        exec_budget: u32,
+    ) -> Result<usize, TisErr> {
         self.request_locality(budget_of(TIMEOUT_A_MS))?;
-        let res = self.exchange(cmd, len, out);
+        let res = self.exchange(cmd, len, out, exec_budget);
         self.relinquish_locality();
         res
     }
-    fn exchange(&mut self, cmd: &[u8], len: usize, out: &mut [u8]) -> Result<usize, TisErr> {
+    fn exchange(
+        &mut self,
+        cmd: &[u8],
+        len: usize,
+        out: &mut [u8],
+        exec_budget: u32,
+    ) -> Result<usize, TisErr> {
         let sts_addr = reg_sts(self.locality);
         self.phy.reset_fifo(sts_addr);
         self.send_data(cmd, len)?;
         self.phy.write8(sts_addr, STS_GO).inspect_err(|_| {
             self.phy.reset_fifo(sts_addr);
         })?;
-        self.wait_status(STS_DATA_AVAIL | STS_VALID, budget_of(TIMEOUT_B_MS))
+        self.wait_status(STS_DATA_AVAIL | STS_VALID, exec_budget)
             .inspect_err(|_| {
                 self.phy.reset_fifo(sts_addr);
             })?;

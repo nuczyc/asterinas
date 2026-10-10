@@ -130,8 +130,17 @@ impl<P: TisPhy> Xfer<P> {
     ///
     /// 返回码取自响应头的固定偏移，取值不依赖任何报文体解析——响应长度已由
     /// 传输层保证不小于一个报文头，因此这次读取无条件成立。
-    fn attempt(&mut self, cmd: &[u8], len: usize, rsp: &mut [u8]) -> Result<(usize, u32), XferErr> {
-        let n = match self.tis.transmit(cmd, len, rsp) {
+    ///
+    /// `exec_budget` 直接透传给 [`Tis::transmit`]，用于限定等待 `STS_DATA_AVAIL`
+    /// 的轮询次数上界。
+    fn attempt(
+        &mut self,
+        cmd: &[u8],
+        len: usize,
+        rsp: &mut [u8],
+        exec_budget: u32,
+    ) -> Result<(usize, u32), XferErr> {
+        let n = match self.tis.transmit(cmd, len, rsp, exec_budget) {
             Ok(v) => v,
             Err(e) => return Err(XferErr::Bus(e)),
         };
@@ -174,11 +183,12 @@ impl<P: TisPhy> Xfer<P> {
             return Err(XferErr::BadCommand);
         }
         let cc = peek_be32(cmd, 6);
+        let exec_budget = poll_budget(cc);
         let cap = budget_of(RETRY_CAP_MS);
         let mut ticks = budget_of(RETRY_FIRST_MS);
         let mut left = self.retries;
         while left > 0 {
-            match self.attempt(cmd, len, rsp) {
+            match self.attempt(cmd, len, rsp, exec_budget) {
                 Ok((n, rc)) => {
                     if !Self::retryable(rc, cc) {
                         return Ok((n, rc));
@@ -196,6 +206,6 @@ impl<P: TisPhy> Xfer<P> {
             }
             left -= 1;
         }
-        self.attempt(cmd, len, rsp)
+        self.attempt(cmd, len, rsp, exec_budget)
     }
 }

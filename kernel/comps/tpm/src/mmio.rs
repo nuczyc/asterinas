@@ -4,6 +4,7 @@ use ostd::{
     io::IoMem,
     mm::{Paddr, VmIoOnce},
     task::Task,
+    timer::Jiffies,
 };
 use tpm_core::{phy::TisPhy, tis::TisErr};
 
@@ -11,7 +12,6 @@ pub struct TisMmio {
     /// ostd 发放的 MMIO 句柄。所有寄存器/数据口访问都以它为基址,偏移即
     /// `TPM_ACCESS(l)` 等地址里已折进 `l << 12` 的那个值。
     mmio: IoMem,
-    polls_since_yield: u8,
 }
 impl TisMmio {
     /// 向 ostd 申领一段 MMIO 区并建立句柄。
@@ -23,10 +23,7 @@ impl TisMmio {
     ///
     pub fn acquire(phys: Range<Paddr>) -> Result<Self, TisErr> {
         match IoMem::acquire(phys) {
-            Ok(mmio) => Ok(TisMmio {
-                mmio,
-                polls_since_yield: 0,
-            }),
+            Ok(mmio) => Ok(TisMmio { mmio }),
             Err(_) => Err(TisErr::Phy),
         }
     }
@@ -91,23 +88,25 @@ impl TisPhy for TisMmio {
         let _ = self.mmio.write_once::<u8>(addr as usize, &0x40u8);
         {}
     }
-    /// Back off between TIS status checks.
+    /// Back off approximately 1 ms between TIS status polls.
     ///
-    /// Most checks return immediately so that short TPM state transitions are
-    /// observed without a fixed delay. After a bounded polling burst, yield
-    /// once to avoid monopolizing the CPU while a long TPM command is running.
+    /// Each call spins until the jiffy counter (1 kHz) advances by one tick,
+    /// so one call ≈ 1 ms of wall-clock time.  This makes the poll-count
+    /// budgets in `tis_core` correspond to real milliseconds — a requirement
+    /// for slow commands such as RSA key generation.
+    ///
+    /// Outside a task context (early boot probe) we fall back to a CPU
+    /// spin-hint; boot commands are short enough that the imprecise timing
+    /// causes no problem.
     fn delay(&mut self) {
-        const POLLS_BEFORE_YIELD: u8 = 64;
-
-        self.polls_since_yield += 1;
-        if self.polls_since_yield < POLLS_BEFORE_YIELD {
-            core::hint::spin_loop();
-            return;
-        }
-
-        self.polls_since_yield = 0;
         if Task::current().is_some() {
-            Task::yield_now();
+            let target = Jiffies::elapsed().as_u64().saturating_add(1);
+            loop {
+                Task::yield_now();
+                if Jiffies::elapsed().as_u64() >= target {
+                    break;
+                }
+            }
         } else {
             core::hint::spin_loop();
         }
