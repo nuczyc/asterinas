@@ -20,9 +20,6 @@ pub(crate) fn be16_arr(v: u16) -> [u8; 2] {
 pub(crate) fn be32_arr(v: u32) -> [u8; 4] {
     crate::cursor::be32_bytes(v)
 }
-pub fn group_crypto_axioms() {
-    panic!()
-}
 pub trait Sha256Ctx: Sized {
     fn new() -> Self;
     fn update(&mut self, data: &[u8]);

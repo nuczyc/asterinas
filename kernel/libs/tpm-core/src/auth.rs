@@ -119,7 +119,6 @@ pub struct RspAuth {
     /// 对端本轮的 nonce。
     pub tpm_nonce: [u8; NONCE_LEN],
 }
-impl RspAuth {}
 /// 取出偏移 `off` 起的一段 nonce。
 fn read_nonce(raw: &[u8], off: usize) -> [u8; NONCE_LEN] {
     let mut out = [0u8; NONCE_LEN];

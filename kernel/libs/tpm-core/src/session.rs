@@ -35,6 +35,27 @@ pub struct AuthSession {
     ordinal: u32,
     state: SessionState,
 }
+/// 会话密钥与口令拼成的 HMAC 密钥材料，析构即擦除。
+///
+/// [`AuthSession::key_buf`] 每次把结构体里的秘密拷进一块栈缓冲返回，这些
+/// 临时副本和结构体本身一样需要用完即抹。包成带 `Drop` 的类型后，擦除随
+/// 作用域结束自动发生，调用方无需、也无法忘记手动清理——与
+/// [`AuthSession`] 自身的 `Drop` 同一套路。
+struct KeyMaterial {
+    buf: [u8; KEY_MATERIAL_MAX],
+    len: usize,
+}
+impl KeyMaterial {
+    fn as_slice(&self) -> &[u8] {
+        &self.buf[..self.len]
+    }
+}
+impl Drop for KeyMaterial {
+    fn drop(&mut self) {
+        self.buf.fill(0);
+        core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
+    }
+}
 impl AuthSession {
     /// 本会话的句柄。
     pub fn handle(&self) -> u32 {
@@ -48,13 +69,16 @@ impl AuthSession {
     pub fn attrs(&self) -> u8 {
         self.attrs
     }
-    /// 把会话密钥与口令拼进一块定长缓冲区，返回有效长度。
-    fn key_buf(&self) -> ([u8; KEY_MATERIAL_MAX], usize) {
+    /// 把会话密钥与口令拼进一块定长缓冲区。返回的 [`KeyMaterial`] 析构即擦除。
+    fn key_buf(&self) -> KeyMaterial {
         let mut buf = [0u8; KEY_MATERIAL_MAX];
         let plen = self.passphrase_len;
         buf[..SHA256_LEN].copy_from_slice(&self.session_key);
         buf[SHA256_LEN..SHA256_LEN + plen].copy_from_slice(&self.passphrase[..plen]);
-        (buf, SHA256_LEN + plen)
+        KeyMaterial {
+            buf,
+            len: SHA256_LEN + plen,
+        }
     }
     /// 由协商出的共享秘密与双方 nonce 导出会话密钥。
     ///
@@ -124,8 +148,8 @@ impl AuthSession {
     ) {
         let params = &buf[param_off..param_off + param_len];
         let cph = cp_hash::<S>(self.ordinal, names, params);
-        let (kb, klen) = self.key_buf();
-        let key = &kb[..][0..klen];
+        let km = self.key_buf();
+        let key = km.as_slice();
         let mac = auth_hmac::<H>(key, &cph, &self.our_nonce, &self.tpm_nonce, self.attrs);
         patch_hmac(buf, sess_off, &mac);
         self.state = SessionState::Pending(index);
@@ -169,8 +193,8 @@ impl AuthSession {
         };
         let params = &raw[a.param_off..param_end];
         let rph = rp_hash::<S>(0, self.ordinal, params);
-        let (kb, klen) = self.key_buf();
-        let key = &kb[..][0..klen];
+        let km = self.key_buf();
+        let key = km.as_slice();
         let expect = auth_hmac::<H>(key, &rph, &a.tpm_nonce, &self.our_nonce, self.attrs);
         let hmac_end = match a.hmac_off.checked_add(SHA256_LEN) {
             Some(v) => v,
@@ -193,6 +217,21 @@ impl AuthSession {
         self.state = SessionState::Closed;
     }
 }
+impl Drop for AuthSession {
+    /// 析构即擦除密钥材料。
+    ///
+    /// `session_key` 与 `passphrase` 是本结构仅有的秘密。`fill(0)` 之后插一道
+    /// `compiler_fence`，阻止编译器以"反正马上要释放"为由把这些写入消掉
+    /// （dead-store elimination）。这不等同于 `zeroize` 的逐字节 volatile 写，
+    /// 但在不给验证核引入任何依赖的前提下，是能做到的最强保证；也正是本结构
+    /// 刻意不实现 `Clone` 的配套——只有一份副本，就只有这一处需要擦。
+    fn drop(&mut self) {
+        self.session_key.fill(0);
+        self.passphrase.fill(0);
+        self.passphrase_len = 0;
+        core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
+    }
+}
 /// 推导本轮参数加解密所需的密钥与初始向量。
 ///
 /// 两枚 nonce 的先后决定了方向：命令方向本端 nonce 在前，响应方向对端 nonce 在
@@ -203,8 +242,8 @@ pub fn cfb_material<H: HmacSha256Ctx>(
     newer: &[u8; NONCE_LEN],
     older: &[u8; NONCE_LEN],
 ) -> [u8; CFB_MATERIAL_LEN] {
-    let (kb, klen) = session.key_buf();
-    let key = &kb[..][0..klen];
+    let km = session.key_buf();
+    let key = km.as_slice();
     kdfa32::<H>(key, &LABEL_CFB[..], &newer[..], &older[..])
 }
 /// 原地加密命令的首个参数。必须在 [`AuthSession::finalize`] 之前调用。
