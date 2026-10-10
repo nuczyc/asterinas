@@ -6,14 +6,18 @@ pub(crate) fn be16_bytes(v: u16) -> [u8; 2] {
 pub(crate) fn be32_bytes(v: u32) -> [u8; 4] {
     v.to_be_bytes()
 }
-/// 只读解析游标。字段公开，规约函数因此可以保持 `open`，
-/// 跨模块推理时不必额外准备引理。
+/// 只读解析游标。`pos` 私有，推进只能经由 `read_*`/`skip`，外部若需当前
+/// 位置通过 [`Cursor::pos`] 读取。
 pub struct Cursor {
-    pub pos: usize,
+    pos: usize,
 }
 impl Cursor {
     pub fn new() -> Cursor {
         Cursor { pos: 0 }
+    }
+    /// 当前解析位置。解析侧据此记录字段起点（如参数区、nonce 偏移）。
+    pub fn pos(&self) -> usize {
+        self.pos
     }
 }
 

@@ -168,7 +168,7 @@ pub(crate) fn parse_rsp_auth(
         return Err(AuthErr::Malformed);
     }
     let param_len = param_len_u32 as usize;
-    let param_off = c.pos;
+    let param_off = c.pos();
     if !c.skip(raw, param_len) {
         return Err(AuthErr::Malformed);
     }
@@ -189,7 +189,7 @@ pub(crate) fn parse_rsp_auth(
     if nonce_len as usize != NONCE_LEN {
         return Err(AuthErr::BadField);
     }
-    let nonce_off = c.pos;
+    let nonce_off = c.pos();
     if !c.skip(raw, NONCE_LEN) {
         return Err(AuthErr::Malformed);
     }
@@ -199,7 +199,7 @@ pub(crate) fn parse_rsp_auth(
     if hmac_len as usize != SHA256_LEN {
         return Err(AuthErr::BadField);
     }
-    let hmac_off = c.pos;
+    let hmac_off = c.pos();
     let hmac_end = hmac_off.checked_add(SHA256_LEN).ok_or(AuthErr::Malformed)?;
     if hmac_end != raw.len() {
         return Err(AuthErr::Malformed);

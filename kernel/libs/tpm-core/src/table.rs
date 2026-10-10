@@ -1,5 +1,3 @@
-use alloc::vec::Vec;
-
 use super::handle::*;
 
 /// 上下文表的槽位状态。
@@ -11,11 +9,6 @@ pub enum CtxSlot {
     Saved,
     /// 槽位持有一个活跃的物理句柄。
     Live(u32),
-}
-/// 表的抽象状态。字段全公开，供上层写规约。
-pub struct TableView {
-    pub ctx: Vec<CtxSlot>,
-    pub sessions: Vec<u32>,
 }
 #[derive(Clone, Copy)]
 pub struct SpaceTable {

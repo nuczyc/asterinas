@@ -20,22 +20,34 @@ pub enum SessionState {
 /// 擦除的地方。它也不实现 `Debug`：把会话密钥打进日志是最容易犯、也最难
 /// 察觉的错误之一。
 pub struct AuthSession {
-    pub handle: u32,
+    handle: u32,
     /// 本端本轮 nonce。
-    pub our_nonce: [u8; NONCE_LEN],
+    our_nonce: [u8; NONCE_LEN],
     /// 对端最近一轮 nonce。
-    pub tpm_nonce: [u8; NONCE_LEN],
-    pub session_key: [u8; SHA256_LEN],
-    pub passphrase: [u8; PASSPHRASE_MAX],
-    pub passphrase_len: usize,
+    tpm_nonce: [u8; NONCE_LEN],
+    session_key: [u8; SHA256_LEN],
+    passphrase: [u8; PASSPHRASE_MAX],
+    passphrase_len: usize,
     /// 本轮命令使用的会话属性。
-    pub attrs: u8,
+    attrs: u8,
     /// 本轮命令码。响应摘要要用到它，而响应报文里并不携带命令码，所以必须
     /// 由本端记住——这也正是响应无法被挪用到另一条命令上的原因。
-    pub ordinal: u32,
-    pub state: SessionState,
+    ordinal: u32,
+    state: SessionState,
 }
 impl AuthSession {
+    /// 本会话的句柄。
+    pub fn handle(&self) -> u32 {
+        self.handle
+    }
+    /// 本端本轮 nonce。返回副本：nonce 不是秘密，但调用方不该借由它改写本结构。
+    pub fn our_nonce(&self) -> [u8; NONCE_LEN] {
+        self.our_nonce
+    }
+    /// 本轮会话属性。
+    pub fn attrs(&self) -> u8 {
+        self.attrs
+    }
     /// 把会话密钥与口令拼进一块定长缓冲区，返回有效长度。
     fn key_buf(&self) -> ([u8; KEY_MATERIAL_MAX], usize) {
         let mut buf = [0u8; KEY_MATERIAL_MAX];

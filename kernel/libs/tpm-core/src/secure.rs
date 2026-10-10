@@ -1,5 +1,3 @@
-use alloc::vec::Vec;
-
 use crate::{
     auth::{AuthErr, RspAuth, write_cmd_session},
     chip::MSG_MAX,
@@ -30,23 +28,13 @@ pub struct CmdLayout {
 impl CmdLayout {}
 /// 一枚「这段响应的 MAC 已经对上」的凭证。
 ///
-/// 定位结果 `a` 可以公开：读几个偏移不构成任何能力，能力在于凭证本身。
-/// 它也不怕被改——[`Guarded::params`] 要求出示 [`Authenticated::certified`]，
-/// 而那条性质就是就 `a` 说的，改一个偏移就再也证不出来。
-///
-/// 其余字段记下铸造时刻的密钥材料、命令码、本端 nonce 与属性。
-/// 它们不参与运行时计算，只是让 [`Authenticated::certified`] 能把那条 MAC
-/// 等式完整地写出来——凭证若说不清自己证的是什么，就退化成了一个标记。
+/// 定位结果 `a` 可以公开：读几个偏移不构成任何能力，能力在于凭证本身——
+/// 只有 [`Guarded::invoke`] 校验通过后才会铸出它，`#[non_exhaustive]` 则保证
+/// 模块外无法凭空构造一枚。
 #[non_exhaustive]
 pub struct Authenticated {
     pub a: RspAuth,
-    pub raw: Vec<u8>,
-    pub key: Vec<u8>,
-    pub ordinal: u32,
-    pub our_nonce: Vec<u8>,
-    pub attrs: u8,
 }
-impl Authenticated {}
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SecErr {
     /// 字节没能走完一个来回。
@@ -92,9 +80,9 @@ impl<P: TisPhy> Guarded<P> {
         attrs: u8,
     ) -> Result<Authenticated, SecErr> {
         self.sess.begin(rng, ordinal, attrs);
-        let handle = self.sess.handle;
-        let nonce = self.sess.our_nonce;
-        let sattrs = self.sess.attrs;
+        let handle = self.sess.handle();
+        let nonce = self.sess.our_nonce();
+        let sattrs = self.sess.attrs();
         write_cmd_session(cmd, lay.sess_off, handle, &nonce, sattrs);
         self.sess.finalize::<S, H>(
             cmd,
@@ -123,14 +111,7 @@ impl<P: TisPhy> Guarded<P> {
             Ok(a) => a,
             Err(e) => return Err(SecErr::Auth(e)),
         };
-        Ok(Authenticated {
-            a,
-            raw: Vec::new(),
-            key: Vec::new(),
-            ordinal: 0,
-            our_nonce: Vec::new(),
-            attrs: 0,
-        })
+        Ok(Authenticated { a })
     }
     /// 取出响应的参数区。
     ///
