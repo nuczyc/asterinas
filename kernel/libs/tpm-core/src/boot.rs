@@ -207,14 +207,8 @@ impl<P: TisPhy> Boot<P> {
             Err(e) => return Err(e),
         };
         let raw = &self.rbuf[0..n];
-        let rsp = match parse_response(raw) {
-            Ok(v) => v,
-            Err(e) => return Err(BootErr::Parse(e)),
-        };
-        match parse_tpm_property(rsp.body) {
-            Ok(v) => Ok(v),
-            Err(e) => Err(BootErr::Parse(e)),
-        }
+        let rsp = parse_response(raw).map_err(BootErr::Parse)?;
+        parse_tpm_property(rsp.body).map_err(BootErr::Parse)
     }
     /// 问齐四个尺寸，并与本驱动的静态预留对账。
     ///

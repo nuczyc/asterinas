@@ -140,10 +140,10 @@ impl<P: TisPhy> Xfer<P> {
         rsp: &mut [u8],
         exec_budget: u32,
     ) -> Result<(usize, u32), XferErr> {
-        let n = match self.tis.transmit(cmd, len, rsp, exec_budget) {
-            Ok(v) => v,
-            Err(e) => return Err(XferErr::Bus(e)),
-        };
+        let n = self
+            .tis
+            .transmit(cmd, len, rsp, exec_budget)
+            .map_err(XferErr::Bus)?;
         let rc = peek_be32(&*rsp, 6);
         Ok((n, rc))
     }

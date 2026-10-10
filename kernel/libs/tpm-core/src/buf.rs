@@ -39,14 +39,10 @@ pub struct TpmBuf<const N: usize> {
 }
 impl<const N: usize> TpmBuf<N> {
     fn put_be16(&mut self, at: usize, v: u16) {
-        self.data[at] = ((v >> 8) & 0xff) as u8;
-        self.data[at + 1] = (v & 0xff) as u8;
+        self.data[at..at + 2].copy_from_slice(&v.to_be_bytes());
     }
     fn put_be32(&mut self, at: usize, v: u32) {
-        self.data[at] = ((v >> 24) & 0xff) as u8;
-        self.data[at + 1] = ((v >> 16) & 0xff) as u8;
-        self.data[at + 2] = ((v >> 8) & 0xff) as u8;
-        self.data[at + 3] = (v & 0xff) as u8;
+        self.data[at..at + 4].copy_from_slice(&v.to_be_bytes());
     }
     /// 把 `self.length` 回写进首部的长度字段。
     fn sync_length(&mut self) {

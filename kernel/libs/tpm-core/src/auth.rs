@@ -140,19 +140,17 @@ fn read_nonce(raw: &[u8], off: usize) -> [u8; NONCE_LEN] {
 ///   放行任意值，后面所有偏移就都由对端说了算。
 /// - **长度字段必须与实到字节数相等。** 少一字节意味着解析会读到不属于本
 ///   条响应的数据，多一字节意味着上层截断有误。
-pub(crate) fn parse_rsp_auth(raw: &[u8], rhandles: usize, index: usize) -> Result<RspAuth, AuthErr> {
+pub(crate) fn parse_rsp_auth(
+    raw: &[u8],
+    rhandles: usize,
+    index: usize,
+) -> Result<RspAuth, AuthErr> {
     if raw.len() < HEADER_LEN {
         return Err(AuthErr::Malformed);
     }
     let mut c = Cursor::new();
-    let tag = match c.read_be16(raw) {
-        Some(v) => v,
-        None => return Err(AuthErr::Malformed),
-    };
-    let size = match c.read_be32(raw) {
-        Some(v) => v,
-        None => return Err(AuthErr::Malformed),
-    };
+    let tag = c.read_be16(raw).ok_or(AuthErr::Malformed)?;
+    let size = c.read_be32(raw).ok_or(AuthErr::Malformed)?;
     if !c.skip(raw, 4) {
         return Err(AuthErr::Malformed);
     }
@@ -165,10 +163,7 @@ pub(crate) fn parse_rsp_auth(raw: &[u8], rhandles: usize, index: usize) -> Resul
     if !c.skip(raw, rhandles * 4) {
         return Err(AuthErr::Malformed);
     }
-    let param_len_u32 = match c.read_be32(raw) {
-        Some(v) => v,
-        None => return Err(AuthErr::Malformed),
-    };
+    let param_len_u32 = c.read_be32(raw).ok_or(AuthErr::Malformed)?;
     if param_len_u32 as usize > raw.len() {
         return Err(AuthErr::Malformed);
     }
@@ -178,28 +173,19 @@ pub(crate) fn parse_rsp_auth(raw: &[u8], rhandles: usize, index: usize) -> Resul
         return Err(AuthErr::Malformed);
     }
     for _ in 0..index {
-        let nl = match c.read_be16(raw) {
-            Some(v) => v,
-            None => return Err(AuthErr::Malformed),
-        };
+        let nl = c.read_be16(raw).ok_or(AuthErr::Malformed)?;
         if !c.skip(raw, nl as usize) {
             return Err(AuthErr::Malformed);
         }
         if !c.skip(raw, 1) {
             return Err(AuthErr::Malformed);
         }
-        let hl = match c.read_be16(raw) {
-            Some(v) => v,
-            None => return Err(AuthErr::Malformed),
-        };
+        let hl = c.read_be16(raw).ok_or(AuthErr::Malformed)?;
         if !c.skip(raw, hl as usize) {
             return Err(AuthErr::Malformed);
         }
     }
-    let nonce_len = match c.read_be16(raw) {
-        Some(v) => v,
-        None => return Err(AuthErr::NoSession),
-    };
+    let nonce_len = c.read_be16(raw).ok_or(AuthErr::NoSession)?;
     if nonce_len as usize != NONCE_LEN {
         return Err(AuthErr::BadField);
     }
@@ -208,29 +194,17 @@ pub(crate) fn parse_rsp_auth(raw: &[u8], rhandles: usize, index: usize) -> Resul
         return Err(AuthErr::Malformed);
     }
     let tpm_nonce = read_nonce(raw, nonce_off);
-    let attrs = match c.read_u8(raw) {
-        Some(v) => v,
-        None => return Err(AuthErr::Malformed),
-    };
-    let hmac_len = match c.read_be16(raw) {
-        Some(v) => v,
-        None => return Err(AuthErr::Malformed),
-    };
+    let attrs = c.read_u8(raw).ok_or(AuthErr::Malformed)?;
+    let hmac_len = c.read_be16(raw).ok_or(AuthErr::Malformed)?;
     if hmac_len as usize != SHA256_LEN {
         return Err(AuthErr::BadField);
     }
     let hmac_off = c.pos;
-    let hmac_end = match hmac_off.checked_add(SHA256_LEN) {
-        Some(v) => v,
-        None => return Err(AuthErr::Malformed),
-    };
+    let hmac_end = hmac_off.checked_add(SHA256_LEN).ok_or(AuthErr::Malformed)?;
     if hmac_end != raw.len() {
         return Err(AuthErr::Malformed);
     }
-    let param_end = match param_off.checked_add(param_len) {
-        Some(v) => v,
-        None => return Err(AuthErr::Malformed),
-    };
+    let param_end = param_off.checked_add(param_len).ok_or(AuthErr::Malformed)?;
     if param_end > nonce_off {
         return Err(AuthErr::Malformed);
     }

@@ -51,7 +51,7 @@ pub fn probe_family<P: TisPhy>(x: &mut Xfer<P>) -> Family {
     let mut rsp = [0u8; PROBE_RSP];
     match x.run(&cmd, PROBE_LEN, &mut rsp) {
         Ok((_n, _rc)) => {
-            let tag = (rsp[0] as u16) * 256 + (rsp[1] as u16);
+            let tag = u16::from_be_bytes([rsp[0], rsp[1]]);
             if tag == ST_NO_SESSIONS {
                 Family::TwoZero
             } else {

@@ -142,7 +142,7 @@ impl<T: ChipTransport> ContextIo for CtxIo<T> {
             return Err(IoErr::Integrity);
         }
         let size =
-            (blob[off + CTX_SIZE_OFF] as usize) * 256 + (blob[off + CTX_SIZE_OFF + 1] as usize);
+            u16::from_be_bytes([blob[off + CTX_SIZE_OFF], blob[off + CTX_SIZE_OFF + 1]]) as usize;
         let used = CTX_FIXED + size;
         if blob.len() - off < used {
             return Err(IoErr::Integrity);
@@ -152,12 +152,7 @@ impl<T: ChipTransport> ContextIo for CtxIo<T> {
         }
         self.put_header(CC_CONTEXT_LOAD, HEADER_SIZE + used);
         self.cbuf[HEADER_SIZE..HEADER_SIZE + used].copy_from_slice(&blob[off..off + used]);
-        let n = match self.tx.exec(&self.cbuf, &mut self.rbuf) {
-            Ok(n) => n,
-            Err(e) => {
-                return Err(e);
-            }
-        };
+        let n = self.tx.exec(&self.cbuf, &mut self.rbuf)?;
         if n < HEADER_SIZE {
             return Err(IoErr::Protocol);
         }
@@ -174,12 +169,7 @@ impl<T: ChipTransport> ContextIo for CtxIo<T> {
     fn save(&mut self, h: u32, out: &mut [u8], off: usize) -> Result<usize, IoErr> {
         self.put_header(CC_CONTEXT_SAVE, HEADER_SIZE + 4);
         write_be32_arr(&mut self.cbuf, HEADER_SIZE, h);
-        let n = match self.tx.exec(&self.cbuf, &mut self.rbuf) {
-            Ok(n) => n,
-            Err(e) => {
-                return Err(e);
-            }
-        };
+        let n = self.tx.exec(&self.cbuf, &mut self.rbuf)?;
         if n < HEADER_SIZE {
             return Err(IoErr::Protocol);
         }
@@ -206,10 +196,7 @@ impl<T: ChipTransport> ContextIo for CtxIo<T> {
 /// [`write_be32`] 的定长数组版本。切片版要求 `&mut [u8]`，而这里操作的是
 /// 结构体里的数组字段，重借用会让 Verus 多出一层义务，直接写更省事。
 fn write_be32_arr(b: &mut [u8; MSG_MAX], off: usize, v: u32) {
-    b[off] = ((v >> 24) & 0xff) as u8;
-    b[off + 1] = ((v >> 16) & 0xff) as u8;
-    b[off + 2] = ((v >> 8) & 0xff) as u8;
-    b[off + 3] = (v & 0xff) as u8;
+    b[off..off + 4].copy_from_slice(&v.to_be_bytes());
 }
 #[cfg(test)]
 mod tests {

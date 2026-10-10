@@ -1,15 +1,10 @@
 /// 整数 → 大端字节。与 `spec_be16_at` 互为逆运算。
 pub(crate) fn be16_bytes(v: u16) -> [u8; 2] {
-    [(v / 256) as u8, (v % 256) as u8]
+    v.to_be_bytes()
 }
 /// 整数 → 大端字节。与 `spec_be32_at` 互为逆运算。
 pub(crate) fn be32_bytes(v: u32) -> [u8; 4] {
-    [
-        (v / 16777216) as u8,
-        ((v / 65536) % 256) as u8,
-        ((v / 256) % 256) as u8,
-        (v % 256) as u8,
-    ]
+    v.to_be_bytes()
 }
 /// 只读解析游标。字段公开，规约函数因此可以保持 `open`，
 /// 跨模块推理时不必额外准备引理。
@@ -52,10 +47,9 @@ impl Cursor {
     pub fn read_be16(&mut self, data: &[u8]) -> Option<u16> {
         let n = data.len();
         if n >= 2 && self.pos <= n - 2 {
-            let hi = data[self.pos];
-            let lo = data[self.pos + 1];
+            let v = u16::from_be_bytes([data[self.pos], data[self.pos + 1]]);
             self.pos += 2;
-            Some(hi as u16 * 256 + lo as u16)
+            Some(v)
         } else {
             None
         }
@@ -63,12 +57,14 @@ impl Cursor {
     pub fn read_be32(&mut self, data: &[u8]) -> Option<u32> {
         let n = data.len();
         if n >= 4 && self.pos <= n - 4 {
-            let b0 = data[self.pos];
-            let b1 = data[self.pos + 1];
-            let b2 = data[self.pos + 2];
-            let b3 = data[self.pos + 3];
+            let v = u32::from_be_bytes([
+                data[self.pos],
+                data[self.pos + 1],
+                data[self.pos + 2],
+                data[self.pos + 3],
+            ]);
             self.pos += 4;
-            Some(b0 as u32 * 16777216 + b1 as u32 * 65536 + b2 as u32 * 256 + b3 as u32)
+            Some(v)
         } else {
             None
         }

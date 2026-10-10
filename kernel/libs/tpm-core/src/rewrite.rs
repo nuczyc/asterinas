@@ -21,16 +21,10 @@ pub enum SpaceErr {
     BadHandle,
 }
 pub fn read_be32(b: &[u8], off: usize) -> u32 {
-    ((b[off] as u32) << 24)
-        | ((b[off + 1] as u32) << 16)
-        | ((b[off + 2] as u32) << 8)
-        | (b[off + 3] as u32)
+    u32::from_be_bytes([b[off], b[off + 1], b[off + 2], b[off + 3]])
 }
 fn write_be32(b: &mut [u8], off: usize, v: u32) {
-    b[off] = ((v >> 24) & 0xff) as u8;
-    b[off + 1] = ((v >> 16) & 0xff) as u8;
-    b[off + 2] = ((v >> 8) & 0xff) as u8;
-    b[off + 3] = (v & 0xff) as u8;
+    b[off..off + 4].copy_from_slice(&v.to_be_bytes());
 }
 /// 把命令句柄区里的虚拟句柄换成物理句柄。
 ///

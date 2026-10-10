@@ -47,18 +47,9 @@ pub(crate) fn parse_response(raw: &[u8]) -> Result<Response<'_>, ParseError> {
         return Err(ParseError::Truncated);
     }
     let mut c = Cursor::new();
-    let tag = match c.read_be16(raw) {
-        Some(v) => v,
-        None => return Err(ParseError::Truncated),
-    };
-    let size = match c.read_be32(raw) {
-        Some(v) => v,
-        None => return Err(ParseError::Truncated),
-    };
-    let rc = match c.read_be32(raw) {
-        Some(v) => v,
-        None => return Err(ParseError::Truncated),
-    };
+    let tag = c.read_be16(raw).ok_or(ParseError::Truncated)?;
+    let size = c.read_be32(raw).ok_or(ParseError::Truncated)?;
+    let rc = c.read_be32(raw).ok_or(ParseError::Truncated)?;
     if size as usize != raw.len() {
         return Err(ParseError::Malformed);
     }
